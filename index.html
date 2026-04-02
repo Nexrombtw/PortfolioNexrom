@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="fr" data-theme="">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Gabriel Marche — Développeur Web Junior (BTS SIO)</title>
+  <meta name="description"
+    content="Portfolio de Gabriel Marche, étudiant en BTS SIO SLAM. Développeur web passionné par l'expérience utilisateur et les architectures modernes.">
+  <meta name="theme-color" content="#FAFAF9">
+  <link rel="stylesheet" href="styles.css">
+
+
+
+  <!-- Preload script to avoid flash of wrong theme -->
+  <script>
+    (function () {
+      const savedTheme = localStorage.getItem('theme');
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+        document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0C0A09');
+      }
+    })();
+  </script>
+</head>
+
+<body>
+
+  <header class="site-header">
+    <div class="container nav">
+      <a href="#" class="logo">Gabriel M.</a>
+
+      <div class="nav-right">
+        <!-- Theme Toggle -->
+        <button id="theme-toggle" class="theme-toggle" aria-label="Changer le thème">
+          <!-- Moon Icon (for Light Mode) -->
+          <svg class="icon-moon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:block">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+          </svg>
+          <!-- Sun Icon (for Dark Mode) -->
+          <svg class="icon-sun" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
+        </button>
+
+        <button class="nav-toggle" aria-label="Menu">
+          <span></span><span></span><span></span>
+        </button>
+
+        <nav>
+          <ul class="nav-menu" id="nav-menu">
+            <li><a href="#about">À propos</a></li>
+            <li><a href="#work">Projets</a></li>
+            <li><a href="#experience">Expérience</a></li>
+            <li><a href="#competences">Compétences</a></li>
+            <li><a href="#insights">Veille</a></li>
+            <li><a href="#contact">Contact</a></li>
+          </ul>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- HERO SECTION -->
+    <section class="hero container fade-up">
+      <div class="hero-content">
+        <span class="hero-intro">Bonjour, je suis Gabriel.</span>
+        <h1>Étudiant en BTS SIO SLAM & Développeur Web.</h1>
+        <p class="text-lead">
+          Passionné par la création d'interfaces intuitives et performantes. Je transforme des besoins utilisateurs en
+          solutions techniques concrètes.
+        </p>
+        <div class="hero-actions">
+          <a class="btn btn--primary" href="#work">Voir mes réalisations</a>
+          <a class="btn btn--ghost" href="#contact">Me contacter</a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABOUT SECTION -->
+    <section id="about" class="container section">
+      <div class="section-header fade-up">
+        <span class="eyebrow">Profil</span>
+        <h2>À propos de moi</h2>
+      </div>
+
+      <div class="about-content fade-up" style="grid-template-columns: 1fr; text-align: center;">
+        <div class="about-text">
+          <p class="text-lead">
+            Actuellement en deuxième année de <strong>BTS SIO option SLAM</strong> (Solutions Logicielles et
+            Applications Métiers), je me forme au développement d'applications web et mobiles.
+          </p>
+          <p>
+            Mon approche combine rigueur technique (acquise via mes projets d'outils internes comme AD Manager) et
+            sensibilité utilisateur (renforcée par mes refontes de sites vitrines). J'aime comprendre "pourquoi" et
+            "pour qui" je code avant de savoir "comment".
+          </p>
+          <p>
+            En dehors du code, j'aime bien les <strong>jeux vidéo</strong>, la <strong>musique</strong>,
+            l'<strong>art</strong> et le <strong>cinéma</strong>. Ces passions nourrissent ma créativité au quotidien.
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- SELECTED WORK (BENTO GRID) -->
+    <section id="work" class="container section">
+      <div class="section-header fade-up">
+        <span class="eyebrow">Portfolio</span>
+        <h2>Sélection de Projets</h2>
+        <span class="text-small">2024 — 2026</span>
+      </div>
+
+      <div class="bento-grid">
+        <!-- Project 0: ESN Lille -->
+        <article class="bento-cell fade-up">
+          <span class="cell-icon">🌍</span>
+          <h3 class="cell-title">Refonte ESN Lille</h3>
+          <p class="cell-desc">Modernisation UX/UI complète, audit SEO et refonte graphique pour simplifier l'accès aux
+            événements étudiants.</p>
+          <p style="font-size: 0.85rem; color: var(--muted); margin-top: 8px;"><em>Projet de stage (Janvier 2026).</em>
+          </p>
+          <div class="tech-stack">
+            <span class="tech-pill">HTML/CSS</span>
+            <span class="tech-pill">CMS</span>
+            <span class="tech-pill">SEO</span>
+          </div>
+          <a href="#competences" class="btn btn--ghost btn--sm">Voir les preuves</a>
+        </article>
+
+        <!-- Project 1: Foundever AD Management -->
+        <article class="bento-cell fade-up">
+          <span class="cell-icon">⚡</span>
+          <h3 class="cell-title">Foundever AD Management</h3>
+          <p class="cell-desc">Application desktop (GUI) pour l'administration sécurisée et simplifiée des utilisateurs
+            Active Directory.</p>
+          <p style="font-size: 0.85rem; color: var(--muted); margin-top: 8px;"><em>Projet en autonomie.</em></p>
+          <div class="tech-stack">
+            <span class="tech-pill">PowerShell</span>
+            <span class="tech-pill">WPF</span>
+            <span class="tech-pill">Scripting</span>
+          </div>
+          <a href="#competences" class="btn btn--ghost btn--sm">Voir les preuves</a>
+        </article>
+
+        <!-- Project 2: Emmaüs -->
+        <article class="bento-cell fade-up">
+          <span class="cell-icon">🛍️</span>
+          <h3 class="cell-title">Emmaüs Wambrechies</h3>
+          <p class="cell-desc">Développement d'un site vitrine optimisé pour digitaliser l'expérience bénévole et
+            accroître la visibilité locale.</p>
+          <p style="font-size: 0.85rem; color: var(--muted); margin-top: 8px;"><em>Projet scolaire (Atelier
+              Professionnel).</em></p>
+          <div class="tech-stack">
+            <span class="tech-pill">Next.js</span>
+            <span class="tech-pill">Tailwind CSS</span>
+            <span class="tech-pill">Vercel</span>
+          </div>
+          <a href="#competences" class="btn btn--ghost btn--sm">Voir les preuves</a>
+        </article>
+
+        <!-- Project 3: CashCash -->
+        <article class="bento-cell fade-up">
+          <span class="cell-icon">💰</span>
+          <h3 class="cell-title">CashCash</h3>
+          <p class="cell-desc">Architecture système avec un client lourd (C# WPF), un client léger (PHP/Symfony), et un backend orchestré sous Docker.</p>
+          <p style="font-size: 0.85rem; color: var(--muted); margin-top: 8px;"><em>Projet scolaire.</em></p>
+          <div class="tech-stack">
+            <span class="tech-pill">C# WPF</span>
+            <span class="tech-pill">PHP/Symfony</span>
+            <span class="tech-pill">Docker</span>
+            <span class="tech-pill">SQL</span>
+          </div>
+          <a href="#competences" class="btn btn--ghost btn--sm">Voir les preuves</a>
+        </article>
+
+        <!-- Tech Stack Highlight -->
+        <div class="bento-cell fade-up" style="background: var(--text); color: var(--bg);">
+          <h3 class="cell-title" style="color:var(--bg)">Ma Stack Technique</h3>
+          <p class="cell-desc" style="color:var(--muted); opacity: 0.8">
+            Les outils que je maîtrise pour concevoir mes solutions.
+          </p>
+          <div class="tech-stack" style="gap: 12px;">
+            <span style="color: inherit; opacity:0.9;">HTML5 / CSS3</span>
+            <span style="color: inherit; opacity:0.9;">JS / React</span>
+            <span style="color: inherit; opacity:0.9;">PHP / SQL</span>
+            <span style="color: inherit; opacity:0.9;">Git / GitHub</span>
+            <span style="color: inherit; opacity:0.9;">Figma</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- EXPERIENCE SECTION -->
+    <section id="experience" class="container section">
+      <div class="section-header fade-up">
+        <span class="eyebrow">Carrière</span>
+        <h2>Expérience professionnelle</h2>
+      </div>
+
+      <div class="exp-list">
+        <!-- ESN Lille (Stage) -->
+        <article class="exp-item fade-up">
+          <div class="exp-date">Janv. 2026 — Fév. 2026</div>
+          <div class="exp-content">
+            <h3>Stage Développeur Web & Refonte</h3>
+            <span class="exp-role">ESN Lille (Erasmus Student Network) — Lille</span>
+            <ul class="exp-details">
+              <li>Audit complet de l'ancien site et proposition de refonte UX/UI conformes à la charte graphique.</li>
+              <li>Intégration web et optimisation SEO pour améliorer le référencement naturel.</li>
+              <li>Mise en place de templates réutilisables pour faciliter la gestion future du contenu.</li>
+              <li>Documentation technique et transfert de compétences à l'équipe bénévole.</li>
+            </ul>
+            <a href="#competences" class="btn btn--ghost btn--sm">Voir les preuves</a>
+          </div>
+        </article>
+
+        <!-- Sitel / Foundever -->
+        <article class="exp-item fade-up">
+          <div class="exp-date">2024 (24 semaines)</div>
+          <div class="exp-content">
+            <h3>Stage Support Informatique & Dev Scripting</h3>
+            <span class="exp-role">SITEL (Foundever) DSI — Wasquehal</span>
+            <ul class="exp-details">
+              <li>Assistance utilisateur de niveaux 1 et 2 (résolution d'incidents matériels et logiciels).</li>
+              <li>Développement de scripts d'automatisation (batch/PowerShell) pour la maintenance préventive.</li>
+              <li>Gestion de parc : déploiement d'images, inventaire et suivi des licences.</li>
+            </ul>
+            <a href="#competences" class="btn btn--ghost btn--sm">Voir les preuves</a>
+          </div>
+        </article>
+
+        <!-- LDLC -->
+        <article class="exp-item fade-up">
+          <div class="exp-date">Nov. 2021 (2 semaines)</div>
+          <div class="exp-content">
+            <h3>Stage Maintenance Informatique</h3>
+            <span class="exp-role">LDLC — Villeneuve-d’Ascq</span>
+            <ul class="exp-details">
+              <li>Diagnostic approfondi et réparation de postes informatiques (fixes et portables).</li>
+              <li>Montage de configurations PC sur mesure et conseil client.</li>
+            </ul>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- EDUCATION SECTION -->
+    <section id="education" class="container section">
+      <div class="section-header fade-up">
+        <span class="eyebrow">Diplômes</span>
+        <h2>Parcours scolaire</h2>
+      </div>
+
+      <div class="edu-list">
+        <!-- BTS SIO -->
+        <article class="edu-item fade-up">
+          <div class="edu-date">2024 — 2026 (en cours)</div>
+          <div class="edu-content">
+            <h3>BTS Services Informatiques aux Organisations</h3>
+            <span class="edu-role">Option SLAM (Solutions Logicielles et Applications Métiers) — Lycée Gaston Berger
+              (Lille)</span>
+          </div>
+        </article>
+
+        <!-- Bac Pro -->
+        <article class="edu-item fade-up">
+          <div class="edu-date">2021 — 2024</div>
+          <div class="edu-content">
+            <h3>Bac Pro Systèmes Numériques</h3>
+            <span class="edu-role">Option RISC — Lycée César Baggio (Lille)</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <!-- TABLEAU COMPETENCES BTS SIO -->
+    <section id="competences" class="container section">
+      <div class="section-header fade-up">
+        <span class="eyebrow">Expertise</span>
+        <h2>Compétences BTS SIO SLAM</h2>
+      </div>
+      <p style="margin-bottom: 1rem; color: var(--muted);">
+        Synthèse de la couverture des compétences du référentiel BTS SIO à travers mes réalisations.
+      </p>
+
+      <div style="overflow-x: auto;" class="fade-up">
+        <table class="competences-bts">
+          <thead>
+            <tr>
+              <th rowspan="2" style="background: var(--panel)">Tâche / Réalisation</th>
+              <th colspan="7" style="background: var(--panel); border-bottom: 2px solid var(--border)">Compétences Validées</th>
+            </tr>
+            <tr>
+              <th>Gérer le<br>patrimoine</th>
+              <th>Incidents &<br>Demandes</th>
+              <th>Présence<br>en ligne</th>
+              <th>Mode<br>Projet</th>
+              <th>Mise à<br>disposition</th>
+              <th>Dév.<br>Pro</th>
+              <th>Conception<br>& Dév</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- SECTION 2EME ANNEE -->
+            <tr class="section-title">
+              <td colspan="8">Réalisations en milieu professionnel (2ème année)</td>
+            </tr>
+            <tr>
+              <td>
+                <span class="project-title">Refonte site ESN Lille (Stage)</span>
+                <span class="project-proofs">Preuves : Cahier des charges, Audit SEO, Maquettes, Guide utilisateur</span>
+              </td>
+              <td><span class="matrix-icon none">○</span></td>
+              <td><span class="matrix-icon none">○</span></td>
+              <td class="has-proofs" data-skill-title="Présence en ligne" data-proofs="<ul><li><a href='#' target='_blank'>Audit SEO complet</a></li><li><a href='#' target='_blank'>Maquettes Figma</a></li></ul><div class='proof-screen-container'><p class='proof-subtitle'>Aperçu de la preuve</p><div class='proof-image-wrapper'><img src='assets/proofs/placeholder.jpg' alt='Preuve de compétence' class='proof-image' onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" /></div><a href='assets/proofs/placeholder.jpg' target='_blank' class='btn btn--sm proof-btn'>Ouvrir le document</a></div>"><span class="matrix-icon check">●</span></td>
+              <td class="has-proofs" data-skill-title="Mode Projet" data-proofs="<ul><li><a href='#' target='_blank'>Tableau Trello & Planification</a></li></ul><div class='proof-screen-container'><p class='proof-subtitle'>Aperçu de la preuve</p><div class='proof-image-wrapper'><img src='assets/proofs/placeholder.jpg' alt='Preuve de compétence' class='proof-image' onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" /></div><a href='assets/proofs/placeholder.jpg' target='_blank' class='btn btn--sm proof-btn'>Ouvrir le document</a></div>"><span class="matrix-icon check">●</span></td>
+              <td class="has-proofs" data-skill-title="Mise à disposition" data-proofs="<ul><li><a href='#' target='_blank'>Lien vers le site en production</a></li></ul><div class='proof-screen-container'><p class='proof-subtitle'>Aperçu de la preuve</p><div class='proof-image-wrapper'><img src='assets/proofs/placeholder.jpg' alt='Preuve de compétence' class='proof-image' onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" /></div><a href='assets/proofs/placeholder.jpg' target='_blank' class='btn btn--sm proof-btn'>Ouvrir le document</a></div>"><span class="matrix-icon check">●</span></td>
+              <td class="has-proofs" data-skill-title="Dév. Pro" data-proofs="<ul><li><a href='#' target='_blank'>Guide utilisateur rédigé</a></li></ul><div class='proof-screen-container'><p class='proof-subtitle'>Aperçu de la preuve</p><div class='proof-image-wrapper'><img src='assets/proofs/placeholder.jpg' alt='Preuve de compétence' class='proof-image' onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" /></div><a href='assets/proofs/placeholder.jpg' target='_blank' class='btn btn--sm proof-btn'>Ouvrir le document</a></div>"><span class="matrix-icon check">●</span></td>
+              <td class="has-proofs" data-skill-title="Conception & Dév" data-proofs="<ul><li><a href='#' target='_blank'>Captures CMS et code HTML/JS</a></li></ul><div class='proof-screen-container'><p class='proof-subtitle'>Aperçu de la preuve</p><div class='proof-image-wrapper'><img src='assets/proofs/placeholder.jpg' alt='Preuve de compétence' class='proof-image' onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" /></div><a href='assets/proofs/placeholder.jpg' target='_blank' class='btn btn--sm proof-btn'>Ouvrir le document</a></div>"><span class="matrix-icon check">●</span></td>
+            </tr>
+
+            <!-- SECTION 1ERE ANNEE -->
+            <tr class="section-title">
+              <td colspan="8">Réalisations en milieu professionnel (1ère année)</td>
+            </tr>
+            <tr>
+              <td>
+                <span class="project-title">Stage Foundever / Sitel (AD Manager)</span>
+                <span class="project-proofs">Preuves : Code source PowerShell, résolution de bugs, doc technique.</span>
+              </td>
+              <td class="has-proofs" data-skill-title="Gérer le patrimoine informatique" data-proofs="<ul><li><strong>Code source PowerShell (.ps1) :</strong> Création d'une interface graphique (GUI) pour interagir avec l'Active Directory.</li><li><strong>Documentation :</strong> Explication de l'architecture et sécurisation des comptes.</li><li><strong>Captures d'écran :</strong> Preuves de fonctionnement (recherche, groupes).</li></ul><div class='proof-screen-container'><p class='proof-subtitle'>Aperçu de la preuve</p><div class='proof-image-wrapper'><img src='assets/proofs/placeholder.jpg' alt='Preuve de compétence' class='proof-image' onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" /></div><a href='assets/proofs/placeholder.jpg' target='_blank' class='btn btn--sm proof-btn'>Ouvrir le document</a></div>"><span class="matrix-icon check">●</span></td>
+              <td class="has-proofs" data-skill-title="Répondre aux incidents" data-proofs="<ul><li><strong>Manuel Utilisateur :</strong> Guide pour automatiser la résolution d'incidents (Reset MDP, désactivation).</li><li><strong>Résolution de bugs :</strong> Traces de corrections d'erreurs d'API (ChangePasswordAtLogon, NullException).</li></ul><div class='proof-screen-container'><p class='proof-subtitle'>Aperçu de la preuve</p><div class='proof-image-wrapper'><img src='assets/proofs/placeholder.jpg' alt='Preuve de compétence' class='proof-image' onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" /></div><a href='assets/proofs/placeholder.jpg' target='_blank' class='btn btn--sm proof-btn'>Ouvrir le document</a></div>"><span class="matrix-icon check">●</span></td>
+              <td><span class="matrix-icon none">○</span></td>
+              <td class="has-proofs" data-skill-title="Mode Projet" data-proofs="<ul><li><strong>Suivi :</strong> Cahier des charges et adaptation aux demandes de la DSI.</li></ul><div class='proof-screen-container'><p class='proof-subtitle'>Aperçu de la preuve</p><div class='proof-image-wrapper'><img src='assets/proofs/placeholder.jpg' alt='Preuve de compétence' class='proof-image' onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" /></div><a href='assets/proofs/placeholder.jpg' target='_blank' class='btn btn--sm proof-btn'>Ouvrir le document</a></div>"><span class="matrix-icon partial">◐</span></td>
+              <td><span class="matrix-icon check">●</span></td>
+              <td><span class="matrix-icon check">●</span></td>
+              <td><span class="matrix-icon check">●</span></td>
+            </tr>
+
+            <!-- SECTION PROJETS SCOLAIRES -->
+            <tr class="section-title">
+              <td colspan="8">Réalisations en cours de formation (Projets scolaires)</td>
+            </tr>
+            <tr>
+              <td>
+                <span class="project-title">Site Emmaüs Wambrechies (AP 1)</span>
+                <span class="project-proofs">Preuves : Maquettes Figma, Code source Next.js, Déploiement Vercel</span>
+              </td>
+              <td><span class="matrix-icon none">○</span></td>
+              <td><span class="matrix-icon none">○</span></td>
+              <td class="has-proofs" data-skill-title="Développer la présence en ligne" data-proofs="<ul><li><strong>Maquettes Figma :</strong> Conception de l'UI/UX pour digitaliser l'expérience bénévole.</li><li><strong>Code source :</strong> Développement Front-End complet via Next.js.</li><li><strong>Déploiement :</strong> Mise en ligne du site vitrine.</li></ul><div class='proof-screen-container'><p class='proof-subtitle'>Aperçu de la preuve</p><div class='proof-image-wrapper'><img src='assets/proofs/placeholder.jpg' alt='Preuve de compétence' class='proof-image' onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" /></div><a href='assets/proofs/placeholder.jpg' target='_blank' class='btn btn--sm proof-btn'>Ouvrir le document</a></div>"><span class="matrix-icon check">●</span></td>
+              <td><span class="matrix-icon check">●</span></td>
+              <td class="has-proofs" data-skill-title="Mettre à disposition un service" data-proofs="<ul><li><strong>Déploiement continu :</strong> Hébergement et mise en production sur Vercel.</li><li><strong>Tests :</strong> Validation responsive design.</li></ul><div class='proof-screen-container'><p class='proof-subtitle'>Aperçu de la preuve</p><div class='proof-image-wrapper'><img src='assets/proofs/placeholder.jpg' alt='Preuve de compétence' class='proof-image' onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" /></div><a href='assets/proofs/placeholder.jpg' target='_blank' class='btn btn--sm proof-btn'>Ouvrir le document</a></div>"><span class="matrix-icon check">●</span></td>
+              <td><span class="matrix-icon partial">◐</span></td>
+              <td><span class="matrix-icon check">●</span></td>
+            </tr>
+            <tr>
+              <td>
+                <span class="project-title">CashCash (AP 2 - Client Lourd)</span>
+                <span class="project-proofs">Preuves : Diagrammes UML, BDD SQL, Code C# WPF</span>
+              </td>
+              <td><span class="matrix-icon partial">◐</span></td>
+              <td><span class="matrix-icon none">○</span></td>
+              <td><span class="matrix-icon none">○</span></td>
+              <td><span class="matrix-icon check">●</span></td>
+              <td><span class="matrix-icon check">●</span></td>
+              <td><span class="matrix-icon check">●</span></td>
+              <td><span class="matrix-icon check">●</span></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="margin-top: 12px; font-size: 0.85rem; color: var(--muted); text-align: right;">
+          <span style="margin-left: 16px;"><span class="matrix-icon check">●</span> Validé</span>
+          <span style="margin-left: 16px;"><span class="matrix-icon partial">◐</span> Partiellement</span>
+          <span style="margin-left: 16px;"><span class="matrix-icon none">—</span> Non concerné</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- INSIGHTS / VEILLE -->
+    <section id="insights" class="container section">
+      <div class="section-header fade-up">
+        <span class="eyebrow">Découvertes</span>
+        <h2>Veille Technologique – IA & Développement Web</h2>
+        <span class="text-small">Comment j’utilise Perplexity et l’IA pour progresser en tant que développeur.</span>
+      </div>
+
+      <!-- Container dynamique pour JS -->
+      <div id="insights-container" class="grid-insights fade-up">
+        <!-- Chargé via script.js -->
+      </div>
+    </section>
+
+    <!-- CONTACT -->
+    <section id="contact" class="container section fade-up">
+      <div class="contact-section" style="text-align: center;">
+        <span class="eyebrow">Disponibilité</span>
+        <h2>Me contacter</h2>
+        <p style="margin-bottom: 8px;">À la recherche d'une opportunité en développement web (Stage, Alternance,
+          CDD/CDI).</p>
+        <p style="font-size: 0.9rem; color: var(--muted);">Réactif, je vous réponds généralement sous 24 à 48 heures.
+        </p>
+
+        <div class="contact-actions"
+          style="display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; margin-top: 32px;">
+          <button onclick="window.location.href='mailto:marchegabriel.mg@gmail.com'" class="btn btn--primary">
+            ✉️ M'envoyer un email
+          </button>
+          <a href="assets/CV.pdf" target="_blank" class="btn btn--primary"
+            style="background-color: var(--bg); color: var(--text); border: 1px solid var(--border);">
+            📄 Voir mon CV
+          </a>
+          <a href="tel:0622791066" class="btn btn--ghost">
+            📞 06 22 79 10 66
+          </a>
+          <a href="https://www.linkedin.com" target="_blank" rel="noopener" class="btn btn--ghost">
+            LinkedIn
+          </a>
+          <a href="https://github.com" target="_blank" rel="noopener" class="btn btn--ghost">
+            GitHub
+          </a>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <div class="tabs-footer">
+    <a href="#work" class="tab-link active">Réalisations</a>
+    <a href="#competences" class="tab-link">Compétences</a>
+    <a href="#insights" class="tab-link">Veille</a>
+  </div>
+
+  <footer class="site-footer container">
+    <div class="footer-content">
+      <div class="footer-brand">Gabriel Marche</div>
+      <div class="footer-links">
+        <a href="assets/CV.pdf" target="_blank">CV</a>
+        <a href="#">GitHub</a>
+        <a href="#">LinkedIn</a>
+      </div>
+      <div class="footer-copy">
+        © 2026. Code by Gabriel.
+      </div>
+    </div>
+  </footer>
+
+  <!-- PROOF MODAL -->
+  <div id="proof-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">Détails</h3>
+        <button id="modal-close" class="modal-close" aria-label="Fermer">×</button>
+      </div>
+      <div id="modal-body" class="modal-body">
+        <!-- Preuves injectées ici -->
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
