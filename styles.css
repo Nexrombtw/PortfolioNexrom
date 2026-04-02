@@ -627,10 +627,10 @@ tr.section-title td {
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
   width: 90%;
-  max-width: 500px;
+  max-width: 800px;
   max-height: 90vh;
   overflow-y: auto;
-  padding: 2rem;
+  padding: 2.5rem;
   transform: translateY(30px) scale(0.95);
   transition: transform 0.4s var(--spring);
 }
@@ -789,6 +789,60 @@ tr.section-title td {
 
 .proof-btn:hover::after {
     transform: translate(3px, -3px);
+}
+
+/* Grille de cartes de preuves (Templates) */
+.proof-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.proof-card-item {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s var(--spring-soft), border-color 0.3s;
+}
+
+:root[data-theme="light"] .proof-card-item {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+.proof-card-item:hover {
+    transform: translateY(-4px);
+    border-color: var(--accent);
+}
+
+.proof-card-header h4 {
+    font-size: 1.2rem;
+    color: var(--text);
+    margin-bottom: 0.25rem;
+}
+
+.proof-card-header .proof-tag {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--accent);
+    font-weight: 700;
+}
+
+.proof-context, .proof-demo {
+    font-size: 0.95rem;
+    color: var(--text-muted);
+}
+
+.proof-demo strong {
+    color: var(--text);
+    font-weight: 600;
 }
 
 /* -----------------------------------------------------------

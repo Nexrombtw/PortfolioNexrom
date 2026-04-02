@@ -226,13 +226,27 @@ if (proofModal && proofCells.length > 0) {
   proofCells.forEach(cell => {
     cell.addEventListener('click', () => {
       const skillTitle = cell.getAttribute('data-skill-title');
+      const targetId = cell.getAttribute('data-proof-target');
       const proofsHtml = cell.getAttribute('data-proofs');
       
-      if (skillTitle && proofsHtml) {
+      if (skillTitle) {
         modalTitle.textContent = skillTitle;
-        modalBody.innerHTML = proofsHtml;
-        proofModal.classList.add('active');
-        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        
+        if (targetId) {
+            // New Template System
+            const template = document.getElementById(targetId);
+            if (template) {
+                modalBody.innerHTML = '';
+                modalBody.appendChild(template.content.cloneNode(true));
+                proofModal.classList.add('active');
+                document.body.style.overflow = 'hidden';
+            }
+        } else if (proofsHtml) {
+            // Old fallback system
+            modalBody.innerHTML = proofsHtml;
+            proofModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
       }
     });
   });
