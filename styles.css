@@ -27,8 +27,8 @@
   --border: rgba(255, 255, 255, 0.6);
   --primary: #1a1a1a;
   --primary-fg: #F5F5F0;
-  --accent: #A82E2E; /* Crimson élégant */
-  --accent-glow: rgba(168, 46, 46, 0.4);
+  --accent: #2563EB; /* Bleu saphir cohérent */
+  --accent-glow: rgba(37, 99, 235, 0.35);
   --success: #10b981;
   --shadow-sm: 0 4px 20px rgba(0, 0, 0, 0.03);
   --shadow-md: 0 10px 40px rgba(0, 0, 0, 0.06);
@@ -364,130 +364,204 @@ p { margin-bottom: 1.5rem; color: var(--text-muted); font-size: 1.125rem; }
 /* -----------------------------------------------------------
    6. TABLEAU DE COMPÉTENCES ULTRA-MODERNE (Data Grid Matrix)
 ----------------------------------------------------------- */
-.table-wrapper {
-  overflow-x: auto;
+
+/* Wrapper with glassmorphism and custom scrollbar */
+[style*="overflow-x: auto"].fade-up {
+  border-radius: var(--radius);
+}
+
+/* Glass card wrapping the skills matrix */
+.competences-wrapper {
+  background: var(--panel-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: var(--panel-glass);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: var(--shadow-md);
-  padding: 1rem;
-  /* Custom Scrollbar for smooth horizontal scrolling */
+  box-shadow: var(--shadow-md), var(--glow);
+  overflow: hidden;
+  /* Custom scrollbar inside wrapper */
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
 }
 
-.table-wrapper::-webkit-scrollbar {
+.competences-wrapper [style*="overflow-x"] {
+  overflow-x: auto;
+}
+
+.competences-wrapper [style*="overflow-x"]::-webkit-scrollbar {
   height: 6px;
+  width: 6px;
 }
-.table-wrapper::-webkit-scrollbar-track {
+.competences-wrapper [style*="overflow-x"]::-webkit-scrollbar-track {
   background: transparent;
+  border-radius: 99px;
+  margin: 0 10px; /* inset the scrollbar a bit */
 }
-.table-wrapper::-webkit-scrollbar-thumb {
-  background-color: var(--border);
+.competences-wrapper [style*="overflow-x"]::-webkit-scrollbar-thumb {
+  background: var(--border);
   border-radius: 99px;
 }
+.competences-wrapper [style*="overflow-x"]::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 
 .competences-bts {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  margin-top: 1rem;
-  font-size: 1rem;
+  font-size: 0.95rem;
+  background: transparent;
 }
 
-.competences-bts th, .competences-bts td {
-  padding: 1.5rem 1rem;
-  text-align: center;
-  /* Subtle bottom border only, no vertical borders */
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05); 
-  border-right: none;
+/* ---- THEAD ---- */
+.competences-bts thead tr:first-child th {
+  background: linear-gradient(135deg, var(--panel-glass), var(--panel));
+  border-bottom: 2px solid var(--accent);
+  padding: 1.25rem 1rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  font-weight: 800;
 }
 
-:root[data-theme="light"] .competences-bts th, 
-:root[data-theme="light"] .competences-bts td {
-  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.competences-bts th {
+.competences-bts thead tr:nth-child(2) th {
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  padding: 1rem 0.75rem;
+  font-size: 0.78rem;
   font-weight: 700;
   color: var(--text);
   vertical-align: bottom;
-  padding-bottom: 1.5rem;
   letter-spacing: -0.01em;
+  line-height: 1.3;
 }
-.competences-bts th span.eyebrow { margin-bottom: 0.5rem; }
 
-/* Sticky first column */
+.competences-bts th, .competences-bts td {
+  padding: 1rem 0.85rem;
+  text-align: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  transition: background-color 0.25s;
+}
+
+[data-theme="light"] .competences-bts th,
+[data-theme="light"] .competences-bts td {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* ---- STICKY FIRST COLUMN ---- */
 .competences-bts th:first-child,
 .competences-bts td:first-child {
   text-align: left;
-  min-width: 250px;
+  min-width: 240px;
+  max-width: 280px;
   position: sticky;
   left: 0;
-  background-color: var(--panel); /* Match background for sticky overlap */
   z-index: 2;
-  box-shadow: 4px 0 15px rgba(0,0,0,0.05); /* Subtle shadow for depth */
+  background: var(--bg);
+  border-right: 1px solid var(--border);
+  box-shadow: 4px 0 12px rgba(0, 0, 0, 0.08);
 }
-.competences-bts th:first-child { z-index: 3; }
 
-/* Row titles and proofs */
+[data-theme="light"] .competences-bts td:first-child {
+  background: #f8f8f5;
+}
+
+.competences-bts thead th:first-child {
+  z-index: 4;
+  background: var(--panel);
+}
+
+/* ---- PROJECT TITLE & PROOFS ---- */
 .project-title {
   display: block;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text);
-  font-size: 1.1rem;
-}
-.project-proofs {
-  display: block;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  margin-top: 4px;
+  font-size: 0.97rem;
+  letter-spacing: -0.01em;
 }
 
-/* Hover effect on standard rows */
-.competences-bts tbody tr:not(.section-title) {
-  transition: background-color 0.3s;
+.project-proofs {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--text-muted);
+  margin-top: 5px;
+  line-height: 1.5;
+  font-style: italic;
 }
+
+/* ---- SECTION BANDS ---- */
+tr.section-title td {
+  background: linear-gradient(90deg,
+    rgba(56, 189, 248, 0.08) 0%,
+    transparent 100%) !important;
+  border-top: 2px solid rgba(56, 189, 248, 0.2);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.1);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 800;
+  font-size: 0.72rem;
+  color: var(--accent);
+  padding: 0.85rem 1.2rem;
+  text-align: left;
+}
+
+[data-theme="light"] tr.section-title td {
+  background: linear-gradient(90deg,
+    rgba(37, 99, 235, 0.06) 0%,
+    transparent 100%) !important;
+  border-top: 2px solid rgba(37, 99, 235, 0.2);
+  border-bottom: 1px solid rgba(37, 99, 235, 0.1);
+}
+
+/* ---- ROW HOVER ---- */
+.competences-bts tbody tr:not(.section-title) {
+  transition: background-color 0.25s;
+}
+
 .competences-bts tbody tr:not(.section-title):hover td {
   background-color: var(--panel) !important;
 }
 
-/* Section bands separating years/types */
-tr.section-title td {
-  background-color: var(--bg) !important;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 700;
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  padding: 1rem;
-  text-align: left;
+[data-theme="light"] .competences-bts tbody tr:not(.section-title):hover td {
+  background-color: rgba(0, 0, 0, 0.03) !important;
 }
 
-/* Symboles vibrants avec fonds (Pills) */
+/* Keep sticky col background on hover */
+.competences-bts tbody tr:not(.section-title):hover td:first-child {
+  background-color: var(--bg) !important;
+}
+
+[data-theme="light"] .competences-bts tbody tr:not(.section-title):hover td:first-child {
+  background-color: #f8f8f5 !important;
+}
+
+/* ---- MATRIX ICONS ---- */
 .matrix-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.2rem;
+  font-size: 1.15rem;
   font-weight: bold;
+  line-height: 1;
+  transition: transform 0.3s var(--spring);
 }
 
 .matrix-icon.check {
-  color: var(--success);
-  text-shadow: 0 0 10px rgba(16, 185, 129, 0.4); /* Glow effect */
+  color: var(--text);
 }
 
 .matrix-icon.partial {
-  color: var(--accent);
-  text-shadow: 0 0 10px var(--accent-glow);
+  color: var(--text-muted);
 }
 
 .matrix-icon.none {
-  color: var(--border);
-  opacity: 0.3; /* Low visibility */
+  color: var(--text-muted);
+  opacity: 0.2;
+  font-size: 0.8rem;
 }
 
 /* -----------------------------------------------------------
@@ -686,19 +760,31 @@ tr.section-title td {
   color: var(--text);
 }
 
-/* Hover on table cells with proofs */
+/* ---- CLICKABLE PROOF CELLS ---- */
 .competences-bts td.has-proofs {
   cursor: pointer;
   position: relative;
-  transition: transform 0.3s var(--spring-soft), background-color 0.3s, box-shadow 0.3s;
+  transition:
+    transform 0.25s var(--spring-soft),
+    background-color 0.25s,
+    box-shadow 0.25s;
 }
 
 .competences-bts td.has-proofs:hover {
-  transform: scale(1.15);
+  transform: scale(1.18) translateZ(0);
   z-index: 10;
   background-color: var(--panel) !important;
   border-radius: 8px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 0 0 1px var(--border), var(--shadow-sm);
+}
+
+[data-theme="light"] .competences-bts td.has-proofs:hover {
+  background-color: #fff !important;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.1), var(--shadow-sm);
+}
+
+.competences-bts td.has-proofs:hover .matrix-icon {
+  transform: scale(1.15);
 }
 
 /* Styles pour les screens de preuves dans la modale (Ultra Premium) */

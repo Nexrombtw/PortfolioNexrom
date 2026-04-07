@@ -86,6 +86,7 @@
           <a class="btn btn--primary" href="#work">Voir mes réalisations</a>
           <a class="btn btn--ghost" href="#contact">Me contacter</a>
         </div>
+      </div>
     </section>
 
     <!-- ABOUT SECTION -->
@@ -453,9 +454,9 @@
                       <h4 style="margin-top:4px;" title="Exploiter des référentiels, normes et standards adoptés par le prestataire informatique Mentions l gales">Exploiter des référentiels, normes et standards adoptés par le prestataire informatique Mentions l gales</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/exploiter-des-referentiels-normes-et-standards-adoptes-par-le-prestataire-informatique.png" alt="Exploiter des référentiels, normes et standards adoptés par le prestataire informatique Mentions l gales" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Gerer le Le patrimoine/Exploiter des référentiels, normes et standards adoptés par le prestataire informatique Mentions_l_gales/Exploiter des référentiels, normes et standards adoptés par le prestataire informatique Mentions_l_gales.png" alt="Exploiter des référentiels, normes et standards adoptés par le prestataire informatique Mentions l gales" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/exploiter-des-referentiels-normes-et-standards-adoptes-par-le-prestataire-informatique.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Gerer le Le patrimoine/Exploiter des référentiels, normes et standards adoptés par le prestataire informatique Mentions_l_gales/Exploiter des référentiels, normes et standards adoptés par le prestataire informatique Mentions_l_gales.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -463,9 +464,9 @@
                       <h4 style="margin-top:4px;" title="Gérer le patrimoine informatique Recenser et identifier les ressources numériques">Gérer le patrimoine informatique Recenser et identifier les ressources numériques</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/gerer-le-le-patrimoine-gerer-le-patrimoine-informatique-gerer-le-patrimoine-informatique-recenser-et-identifier-les-ressources-numeriques.png" alt="Gérer le patrimoine informatique Recenser et identifier les ressources numériques" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Gerer le Le patrimoine/Gerer le patrimoine informatique/Gérer le patrimoine informatique Recenser et identifier les ressources numériques.png" alt="Gérer le patrimoine informatique Recenser et identifier les ressources numériques" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/gerer-le-le-patrimoine-gerer-le-patrimoine-informatique-gerer-le-patrimoine-informatique-recenser-et-identifier-les-ressources-numeriques.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Gerer le Le patrimoine/Gerer le patrimoine informatique/Gérer le patrimoine informatique Recenser et identifier les ressources numériques.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -473,9 +474,9 @@
                       <h4 style="margin-top:4px;" title="Mise en place des sauvegarde de la bdd (1)">Mise en place des sauvegarde de la bdd (1)</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/gerer-le-le-patrimoine-gerer-des-sauvegardes-miseenplacedessauvegardedelabdd-1.pdf" alt="Mise en place des sauvegarde de la bdd (1)" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Gerer le Le patrimoine/Gérer des sauvegardes/Mise_en_place_des_sauvegarde_de_la_bdd (1).pdf" alt="Mise en place des sauvegarde de la bdd (1)" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/gerer-le-le-patrimoine-gerer-des-sauvegardes-miseenplacedessauvegardedelabdd-1.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Gerer le Le patrimoine/Gérer des sauvegardes/Mise_en_place_des_sauvegarde_de_la_bdd (1).pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -483,9 +484,9 @@
                       <h4 style="margin-top:4px;" title="Script sauvegarde bdd">Script sauvegarde bdd</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/gerer-le-le-patrimoine-gerer-des-sauvegardes-scriptsauvegardebdd.png" alt="Script sauvegarde bdd" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Gerer le Le patrimoine/Gérer des sauvegardes/Script_sauvegarde_bdd.png" alt="Script sauvegarde bdd" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/gerer-le-le-patrimoine-gerer-des-sauvegardes-scriptsauvegardebdd.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Gerer le Le patrimoine/Gérer des sauvegardes/Script_sauvegarde_bdd.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -493,9 +494,9 @@
                       <h4 style="margin-top:4px;" title="Mettre en place et vérifier les niveaux d’habilitation associés à un service ">Mettre en place et vérifier les niveaux d’habilitation associés à un service </h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/gerer-le-le-patrimoine-mettre-en-place-et-verifier-les-niveau-dhabilitation-mettre-en-place-et-verifier-les-niveaux-dhabilitation-associes-a-un-service.png" alt="Mettre en place et vérifier les niveaux d’habilitation associés à un service " class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Gerer le Le patrimoine/Mettre en place et vérifier les niveau d'habilitation/Mettre en place et vérifier les niveaux d’habilitation associés à un service .png" alt="Mettre en place et vérifier les niveaux d’habilitation associés à un service " class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/gerer-le-le-patrimoine-mettre-en-place-et-verifier-les-niveau-dhabilitation-mettre-en-place-et-verifier-les-niveaux-dhabilitation-associes-a-un-service.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Gerer le Le patrimoine/Mettre en place et vérifier les niveau d'habilitation/Mettre en place et vérifier les niveaux d’habilitation associés à un service .png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -503,9 +504,9 @@
                       <h4 style="margin-top:4px;" title="Mettre en place et vérifier les niveaux d’habilitation associés à un service Diagramme de cas d utilisation PlantUML">Mettre en place et vérifier les niveaux d’habilitation associés à un service Diagramme de cas d utilisation PlantUML</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/gerer-le-le-patrimoine-mettre-en-place-et-verifier-les-niveau-dhabilitation-mettre-en-place-et-verifier-les-niveaux-dhabilitation-associes-a-un-service-diagrammedecasdutilisationplantuml.png" alt="Mettre en place et vérifier les niveaux d’habilitation associés à un service Diagramme de cas d utilisation PlantUML" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Gerer le Le patrimoine/Mettre en place et vérifier les niveau d'habilitation/Mettre en place et vérifier les niveaux d’habilitation associés à un service Diagramme_de_cas_d_utilisation_PlantUML.png" alt="Mettre en place et vérifier les niveaux d’habilitation associés à un service Diagramme de cas d utilisation PlantUML" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/gerer-le-le-patrimoine-mettre-en-place-et-verifier-les-niveau-dhabilitation-mettre-en-place-et-verifier-les-niveaux-dhabilitation-associes-a-un-service-diagrammedecasdutilisationplantuml.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Gerer le Le patrimoine/Mettre en place et vérifier les niveau d'habilitation/Mettre en place et vérifier les niveaux d’habilitation associés à un service Diagramme_de_cas_d_utilisation_PlantUML.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -513,9 +514,9 @@
                       <h4 style="margin-top:4px;" title="Mettre en place et vérifier les niveaux d’habilitation associés à un serviceS">Mettre en place et vérifier les niveaux d’habilitation associés à un serviceS</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/gerer-le-le-patrimoine-mettre-en-place-et-verifier-les-niveau-dhabilitation-mettre-en-place-et-verifier-les-niveaux-dhabilitation-associes-a-un-services.png" alt="Mettre en place et vérifier les niveaux d’habilitation associés à un serviceS" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Gerer le Le patrimoine/Mettre en place et vérifier les niveau d'habilitation/Mettre en place et vérifier les niveaux d’habilitation associés à un serviceS.png" alt="Mettre en place et vérifier les niveaux d’habilitation associés à un serviceS" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/gerer-le-le-patrimoine-mettre-en-place-et-verifier-les-niveau-dhabilitation-mettre-en-place-et-verifier-les-niveaux-dhabilitation-associes-a-un-services.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Gerer le Le patrimoine/Mettre en place et vérifier les niveau d'habilitation/Mettre en place et vérifier les niveaux d’habilitation associés à un serviceS.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -523,9 +524,9 @@
                       <h4 style="margin-top:4px;" title="Recenser et identifier les ressources numériques MCD">Recenser et identifier les ressources numériques MCD</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/gerer-le-le-patrimoine-recenser-et-identifier-les-ressources-numeriques-mcd-recenser-et-identifier-les-ressources-numeriques-mcd.png" alt="Recenser et identifier les ressources numériques MCD" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Gerer le Le patrimoine/Recenser et identifier les ressources numériques MCD/Recenser et identifier les ressources numériques MCD.png" alt="Recenser et identifier les ressources numériques MCD" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/gerer-le-le-patrimoine-recenser-et-identifier-les-ressources-numeriques-mcd-recenser-et-identifier-les-ressources-numeriques-mcd.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Gerer le Le patrimoine/Recenser et identifier les ressources numériques MCD/Recenser et identifier les ressources numériques MCD.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -533,9 +534,9 @@
                       <h4 style="margin-top:4px;" title="Procédure de reprise">Procédure de reprise</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/gerer-le-le-patrimoine-verifier-les-conditions-de-la-continuite-dun-service-informatique-procedure-de-reprise.pdf" alt="Procédure de reprise" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Gerer le Le patrimoine/Vérifier les conditions de la continuité d’un service informatique/Procédure de reprise.pdf" alt="Procédure de reprise" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/gerer-le-le-patrimoine-verifier-les-conditions-de-la-continuite-dun-service-informatique-procedure-de-reprise.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Gerer le Le patrimoine/Vérifier les conditions de la continuité d’un service informatique/Procédure de reprise.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -543,9 +544,9 @@
                       <h4 style="margin-top:4px;" title="Service linux">Service linux</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/gerer-le-le-patrimoine-verifier-les-conditions-de-la-continuite-dun-service-informatique-servicelinux.png" alt="Service linux" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Gerer le Le patrimoine/Vérifier les conditions de la continuité d’un service informatique/Service_linux.png" alt="Service linux" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/gerer-le-le-patrimoine-verifier-les-conditions-de-la-continuite-dun-service-informatique-servicelinux.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Gerer le Le patrimoine/Vérifier les conditions de la continuité d’un service informatique/Service_linux.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
           </div>
       </template>
@@ -560,9 +561,9 @@
                       <h4 style="margin-top:4px;" title="-Maquette des diff rentes pages">-Maquette des diff rentes pages</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-participer-a-la-valorisation-de-limage-de-lorganisation-sur-les-medias-numeriques--maquettedesdiffrentespages.png" alt="-Maquette des diff rentes pages" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Participer à la valorisation de l’image de l’organisation sur les médias numériques/-Maquette_des_diff_rentes_pages.png" alt="-Maquette des diff rentes pages" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-participer-a-la-valorisation-de-limage-de-lorganisation-sur-les-medias-numeriques--maquettedesdiffrentespages.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Participer à la valorisation de l’image de l’organisation sur les médias numériques/-Maquette_des_diff_rentes_pages.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -570,9 +571,9 @@
                       <h4 style="margin-top:4px;" title="CHARTE GRAPHIQUE EMMAUS WAMBRECHIES">CHARTE GRAPHIQUE EMMAUS WAMBRECHIES</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-participer-a-la-valorisation-de-limage-de-lorganisation-sur-les-medias-numeriques-chartegraphiqueemmauswambrechies.png" alt="CHARTE GRAPHIQUE EMMAUS WAMBRECHIES" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Participer à la valorisation de l’image de l’organisation sur les médias numériques/CHARTE_GRAPHIQUE_EMMAUS_WAMBRECHIES.png" alt="CHARTE GRAPHIQUE EMMAUS WAMBRECHIES" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-participer-a-la-valorisation-de-limage-de-lorganisation-sur-les-medias-numeriques-chartegraphiqueemmauswambrechies.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Participer à la valorisation de l’image de l’organisation sur les médias numériques/CHARTE_GRAPHIQUE_EMMAUS_WAMBRECHIES.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -580,9 +581,9 @@
                       <h4 style="margin-top:4px;" title="Mentions L gales">Mentions L gales</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-participer-a-la-valorisation-de-limage-de-lorganisation-sur-les-medias-numeriques-mentionslgales.png" alt="Mentions L gales" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Participer à la valorisation de l’image de l’organisation sur les médias numériques/Mentions_L_gales.png" alt="Mentions L gales" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-participer-a-la-valorisation-de-limage-de-lorganisation-sur-les-medias-numeriques-mentionslgales.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Participer à la valorisation de l’image de l’organisation sur les médias numériques/Mentions_L_gales.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -590,9 +591,9 @@
                       <h4 style="margin-top:4px;" title="Proposition de solution d h bergement">Proposition de solution d h bergement</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-participer-a-la-valorisation-de-limage-de-lorganisation-sur-les-medias-numeriques-propositiondesolutiondhbergement.pdf" alt="Proposition de solution d h bergement" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Participer à la valorisation de l’image de l’organisation sur les médias numériques/Proposition_de_solution_d_h_bergement.pdf" alt="Proposition de solution d h bergement" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-participer-a-la-valorisation-de-limage-de-lorganisation-sur-les-medias-numeriques-propositiondesolutiondhbergement.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Participer à la valorisation de l’image de l’organisation sur les médias numériques/Proposition_de_solution_d_h_bergement.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -600,9 +601,9 @@
                       <h4 style="margin-top:4px;" title="SITE AVANT">SITE AVANT</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-evolution-site-web-apercu-du-site-apres.pdf" alt="SITE AVANT" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Participer à l’évolution d’un site Web exploitant les données de l’organisation/1774565832682-628241aa-7ce4-46a8-b16c-2bca2a9eb4f8-SITE_AVANT.png" alt="SITE AVANT" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-evolution-site-web-apercu-du-site-apres.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Participer à l’évolution d’un site Web exploitant les données de l’organisation/1774565832682-628241aa-7ce4-46a8-b16c-2bca2a9eb4f8-SITE_AVANT.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -610,9 +611,9 @@
                       <h4 style="margin-top:4px;" title="MCD">MCD</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-evolution-site-web-mcd.png" alt="MCD" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Participer à l’évolution d’un site Web exploitant les données de l’organisation/1774709625792-c975b9ea-533b-4a59-b797-69b18c687388-MCD.png" alt="MCD" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-evolution-site-web-mcd.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Participer à l’évolution d’un site Web exploitant les données de l’organisation/1774709625792-c975b9ea-533b-4a59-b797-69b18c687388-MCD.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -620,9 +621,9 @@
                       <h4 style="margin-top:4px;" title="Diagramme de cas d utilisation PlantUML">Diagramme de cas d utilisation PlantUML</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-evolution-site-web-diagrammedecasdutilisationplantuml.png" alt="Diagramme de cas d utilisation PlantUML" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Participer à l’évolution d’un site Web exploitant les données de l’organisation/1774737848522-ae8b0055-20c7-4835-a56d-4758fdcdfcab-Diagramme_de_cas_d_utilisation_PlantUML.png" alt="Diagramme de cas d utilisation PlantUML" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-evolution-site-web-diagrammedecasdutilisationplantuml.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Participer à l’évolution d’un site Web exploitant les données de l’organisation/1774737848522-ae8b0055-20c7-4835-a56d-4758fdcdfcab-Diagramme_de_cas_d_utilisation_PlantUML.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -630,9 +631,9 @@
                       <h4 style="margin-top:4px;" title="Plan du site">Plan du site</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-evolution-site-web-plandusite.png" alt="Plan du site" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Participer à l’évolution d’un site Web exploitant les données de l’organisation/1774737860665-7026d83a-c6a0-4f55-a755-405f1df7524e-Plan_du_site.png" alt="Plan du site" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-evolution-site-web-plandusite.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Participer à l’évolution d’un site Web exploitant les données de l’organisation/1774737860665-7026d83a-c6a0-4f55-a755-405f1df7524e-Plan_du_site.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -640,9 +641,9 @@
                       <h4 style="margin-top:4px;" title="Apercu du site apres">Apercu du site apres</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-evolution-site-web-apercu-du-site-apres.pdf" alt="Apercu du site apres" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Participer à l’évolution d’un site Web exploitant les données de l’organisation/Apercu du site apres.pdf" alt="Apercu du site apres" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-evolution-site-web-apercu-du-site-apres.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Participer à l’évolution d’un site Web exploitant les données de l’organisation/Apercu du site apres.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -650,9 +651,9 @@
                       <h4 style="margin-top:4px;" title="SEO">SEO</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-referencer-les-services-en-ligne-de-lorganisation-et-mesurer-leur-visibilite-seo.png" alt="SEO" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Référencer les services en ligne de l’organisation et mesurer leur visibilité/1774532192713-77605f9c-af97-4aa1-98fe-14496e6b0f44-SEO.png" alt="SEO" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-referencer-les-services-en-ligne-de-lorganisation-et-mesurer-leur-visibilite-seo.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Référencer les services en ligne de l’organisation et mesurer leur visibilité/1774532192713-77605f9c-af97-4aa1-98fe-14496e6b0f44-SEO.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -660,9 +661,9 @@
                       <h4 style="margin-top:4px;" title="Exemple de metadata">Exemple de metadata</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-referencer-les-services-en-ligne-de-lorganisation-et-mesurer-leur-visibilite-exempledemetadata.png" alt="Exemple de metadata" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Référencer les services en ligne de l’organisation et mesurer leur visibilité/1774776557980-fce9f0dd-8c4d-4bef-a6b0-9230c42bb43a-Exemple_de_metadata.png" alt="Exemple de metadata" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-referencer-les-services-en-ligne-de-lorganisation-et-mesurer-leur-visibilite-exempledemetadata.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Référencer les services en ligne de l’organisation et mesurer leur visibilité/1774776557980-fce9f0dd-8c4d-4bef-a6b0-9230c42bb43a-Exemple_de_metadata.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -670,9 +671,9 @@
                       <h4 style="margin-top:4px;" title="Demande changement informations google">Demande changement informations google</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-referencer-les-services-en-ligne-de-lorganisation-et-mesurer-leur-visibilite-demandechangementinformationsgoogle.png" alt="Demande changement informations google" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Référencer les services en ligne de l’organisation et mesurer leur visibilité/Demande_changement_informations_google.png" alt="Demande changement informations google" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-referencer-les-services-en-ligne-de-lorganisation-et-mesurer-leur-visibilite-demandechangementinformationsgoogle.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Référencer les services en ligne de l’organisation et mesurer leur visibilité/Demande_changement_informations_google.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
           </div>
       </template>
@@ -687,9 +688,9 @@
                       <h4 style="margin-top:4px;" title="Plan du site">Plan du site</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/travailler-en-mode-projet-analyser-les-objectifs-et-les-modalites-dorganisation-dun-projet-plandusite.png" alt="Plan du site" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Travailler en mode projet/Analyser les objectifs et les modalités d’organisation d’un projet/1774716837037-dbbe0511-ff94-433a-8c8a-b46c5eb4fed2-Plan_du_site.png" alt="Plan du site" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/travailler-en-mode-projet-analyser-les-objectifs-et-les-modalites-dorganisation-dun-projet-plandusite.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Travailler en mode projet/Analyser les objectifs et les modalités d’organisation d’un projet/1774716837037-dbbe0511-ff94-433a-8c8a-b46c5eb4fed2-Plan_du_site.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -697,9 +698,9 @@
                       <h4 style="margin-top:4px;" title="Diagramme de cas d utilisation PlantUML">Diagramme de cas d utilisation PlantUML</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/travailler-en-mode-projet-analyser-les-objectifs-et-les-modalites-dorganisation-dun-projet-diagrammedecasdutilisationplantuml.png" alt="Diagramme de cas d utilisation PlantUML" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Travailler en mode projet/Analyser les objectifs et les modalités d’organisation d’un projet/1774735976240-456006c1-162b-4ad3-adf2-0c6ec3a5e609-Diagramme_de_cas_d_utilisation_PlantUML.png" alt="Diagramme de cas d utilisation PlantUML" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/travailler-en-mode-projet-analyser-les-objectifs-et-les-modalites-dorganisation-dun-projet-diagrammedecasdutilisationplantuml.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Travailler en mode projet/Analyser les objectifs et les modalités d’organisation d’un projet/1774735976240-456006c1-162b-4ad3-adf2-0c6ec3a5e609-Diagramme_de_cas_d_utilisation_PlantUML.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -707,9 +708,9 @@
                       <h4 style="margin-top:4px;" title="cahier des charges">cahier des charges</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/travailler-en-mode-projet-analyser-les-objectifs-et-les-modalites-dorganisation-dun-projet-cahierdescharges.pdf" alt="cahier des charges" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Travailler en mode projet/Analyser les objectifs et les modalités d’organisation d’un projet/cahier_des_charges.pdf" alt="cahier des charges" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/travailler-en-mode-projet-analyser-les-objectifs-et-les-modalites-dorganisation-dun-projet-cahierdescharges.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Travailler en mode projet/Analyser les objectifs et les modalités d’organisation d’un projet/cahier_des_charges.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -717,9 +718,9 @@
                       <h4 style="margin-top:4px;" title="Plan Fonctionnalites">Plan Fonctionnalites</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/travailler-en-mode-projet-analyser-les-objectifs-et-les-modalites-dorganisation-dun-projet-planfonctionnalites.pdf" alt="Plan Fonctionnalites" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Travailler en mode projet/Analyser les objectifs et les modalités d’organisation d’un projet/Plan_Fonctionnalites.pdf" alt="Plan Fonctionnalites" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/travailler-en-mode-projet-analyser-les-objectifs-et-les-modalites-dorganisation-dun-projet-planfonctionnalites.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Travailler en mode projet/Analyser les objectifs et les modalités d’organisation d’un projet/Plan_Fonctionnalites.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -727,9 +728,9 @@
                       <h4 style="margin-top:4px;" title="calendrier previsionnel">calendrier previsionnel</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/travailler-en-mode-projet-planifier-les-activites-calendrierprevisionnel.pdf" alt="calendrier previsionnel" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Travailler en mode projet/Planifier les activités/calendrier_previsionnel.pdf" alt="calendrier previsionnel" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/travailler-en-mode-projet-planifier-les-activites-calendrierprevisionnel.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Travailler en mode projet/Planifier les activités/calendrier_previsionnel.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -737,9 +738,9 @@
                       <h4 style="margin-top:4px;" title="Analyse des  carts  Gantt ">Analyse des  carts  Gantt </h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/travailler-en-mode-projet-evaluer-les-indicateurs-de-suivi-dun-projet-et-an-analysedescartsgantt.png" alt="Analyse des  carts  Gantt " class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Travailler en mode projet/Évaluer les indicateurs de suivi d’un projet et an/1774745206480-2aef9d20-8626-4705-9832-29cad2e97236-Analyse_des__carts__Gantt_.png" alt="Analyse des  carts  Gantt " class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/travailler-en-mode-projet-evaluer-les-indicateurs-de-suivi-dun-projet-et-an-analysedescartsgantt.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Travailler en mode projet/Évaluer les indicateurs de suivi d’un projet et an/1774745206480-2aef9d20-8626-4705-9832-29cad2e97236-Analyse_des__carts__Gantt_.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -747,9 +748,9 @@
                       <h4 style="margin-top:4px;" title="calendrier effectif">calendrier effectif</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/travailler-en-mode-projet-evaluer-les-indicateurs-de-suivi-dun-projet-et-an-calendriereffectif.pdf" alt="calendrier effectif" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Travailler en mode projet/Évaluer les indicateurs de suivi d’un projet et an/calendrier_effectif.pdf" alt="calendrier effectif" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/travailler-en-mode-projet-evaluer-les-indicateurs-de-suivi-dun-projet-et-an-calendriereffectif.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Travailler en mode projet/Évaluer les indicateurs de suivi d’un projet et an/calendrier_effectif.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
           </div>
       </template>
@@ -764,9 +765,9 @@
                       <h4 style="margin-top:4px;" title="Manuel d utilisation du site ACCB">Manuel d utilisation du site ACCB</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/mettre-a-disposition-des-utilisateurs-un-service-informatique-accompagner-les-utilisateurs-dans-la-mise-en-place-dun-manueldutilisationdusiteaccb.pdf" alt="Manuel d utilisation du site ACCB" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Mettre à disposition des utilisateurs un service informatique/Accompagner les utilisateurs dans la mise en place d’un/Manuel_d_utilisation_du_site_ACCB.pdf" alt="Manuel d utilisation du site ACCB" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/mettre-a-disposition-des-utilisateurs-un-service-informatique-accompagner-les-utilisateurs-dans-la-mise-en-place-dun-manueldutilisationdusiteaccb.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Mettre à disposition des utilisateurs un service informatique/Accompagner les utilisateurs dans la mise en place d’un/Manuel_d_utilisation_du_site_ACCB.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -774,9 +775,9 @@
                       <h4 style="margin-top:4px;" title="Procédure de déploiment (1)">Procédure de déploiment (1)</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/mettre-a-disposition-des-utilisateurs-un-service-informatique-accompagner-les-utilisateurs-dans-la-mise-en-place-dun-procedurededeploiment-1.pdf" alt="Procédure de déploiment (1)" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Mettre à disposition des utilisateurs un service informatique/Accompagner les utilisateurs dans la mise en place d’un/Procédure_de_déploiment (1).pdf" alt="Procédure de déploiment (1)" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/mettre-a-disposition-des-utilisateurs-un-service-informatique-accompagner-les-utilisateurs-dans-la-mise-en-place-dun-procedurededeploiment-1.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Mettre à disposition des utilisateurs un service informatique/Accompagner les utilisateurs dans la mise en place d’un/Procédure_de_déploiment (1).pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -784,9 +785,9 @@
                       <h4 style="margin-top:4px;" title="Procédure de déploiment bdd (1)">Procédure de déploiment bdd (1)</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/mettre-a-disposition-des-utilisateurs-un-service-informatique-accompagner-les-utilisateurs-dans-la-mise-en-place-dun-procedurededeploiment-bdd-1.pdf" alt="Procédure de déploiment bdd (1)" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Mettre à disposition des utilisateurs un service informatique/Accompagner les utilisateurs dans la mise en place d’un/Procédure_de_déploiment bdd (1).pdf" alt="Procédure de déploiment bdd (1)" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/mettre-a-disposition-des-utilisateurs-un-service-informatique-accompagner-les-utilisateurs-dans-la-mise-en-place-dun-procedurededeploiment-bdd-1.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Mettre à disposition des utilisateurs un service informatique/Accompagner les utilisateurs dans la mise en place d’un/Procédure_de_déploiment bdd (1).pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -794,9 +795,9 @@
                       <h4 style="margin-top:4px;" title="Sch ma d Architecture Technique et Flux de Donn es">Sch ma d Architecture Technique et Flux de Donn es</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/mettre-a-disposition-des-utilisateurs-un-service-informatique-deployer-un-service-schmadarchitecturetechniqueetfluxdedonnes.png" alt="Sch ma d Architecture Technique et Flux de Donn es" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Mettre à disposition des utilisateurs un service informatique/Déployer un service/1774778284372-e04d65a3-3260-4240-bfe5-965c98c569c2-Sch_ma_d_Architecture_Technique_et_Flux_de_Donn_es.png" alt="Sch ma d Architecture Technique et Flux de Donn es" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/mettre-a-disposition-des-utilisateurs-un-service-informatique-deployer-un-service-schmadarchitecturetechniqueetfluxdedonnes.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Mettre à disposition des utilisateurs un service informatique/Déployer un service/1774778284372-e04d65a3-3260-4240-bfe5-965c98c569c2-Sch_ma_d_Architecture_Technique_et_Flux_de_Donn_es.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -804,9 +805,9 @@
                       <h4 style="margin-top:4px;" title="Procédure de déploiment bdd">Procédure de déploiment bdd</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/mettre-a-disposition-des-utilisateurs-un-service-informatique-deployer-un-service-procedurededeploiment-bdd.pdf" alt="Procédure de déploiment bdd" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Mettre à disposition des utilisateurs un service informatique/Déployer un service/Procédure_de_déploiment bdd.pdf" alt="Procédure de déploiment bdd" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/mettre-a-disposition-des-utilisateurs-un-service-informatique-deployer-un-service-procedurededeploiment-bdd.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Mettre à disposition des utilisateurs un service informatique/Déployer un service/Procédure_de_déploiment bdd.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -814,9 +815,9 @@
                       <h4 style="margin-top:4px;" title="Procédure de déploiment">Procédure de déploiment</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/mettre-a-disposition-des-utilisateurs-un-service-informatique-deployer-un-service-procedurededeploiment.pdf" alt="Procédure de déploiment" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Mettre à disposition des utilisateurs un service informatique/Déployer un service/Procédure_de_déploiment.pdf" alt="Procédure de déploiment" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/mettre-a-disposition-des-utilisateurs-un-service-informatique-deployer-un-service-procedurededeploiment.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Mettre à disposition des utilisateurs un service informatique/Déployer un service/Procédure_de_déploiment.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
               <article class="proof-card-item">
                   <div class="proof-card-header">
@@ -824,9 +825,9 @@
                       <h4 style="margin-top:4px;" title="Postman test api">Postman test api</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/mettre-a-disposition-des-utilisateurs-un-service-informatique-realiser-les-tests-dintegration-et-dacceptation-dun-postmantestapi.png" alt="Postman test api" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Mettre à disposition des utilisateurs un service informatique/Réaliser les tests d’intégration et d’acceptation d’un/1774743715596-c182378d-f1f7-46b1-b2a9-d86c7c2f9ea8-Postman_test_api.png" alt="Postman test api" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/mettre-a-disposition-des-utilisateurs-un-service-informatique-realiser-les-tests-dintegration-et-dacceptation-dun-postmantestapi.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Mettre à disposition des utilisateurs un service informatique/Réaliser les tests d’intégration et d’acceptation d’un/1774743715596-c182378d-f1f7-46b1-b2a9-d86c7c2f9ea8-Postman_test_api.png" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
           </div>
       </template>
@@ -841,9 +842,9 @@
                       <h4 style="margin-top:4px;" title="Outils Technologies">Outils Technologies</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/organiser-son-devprofessionnel-mettre-en-place-son-envi-outilstechnologies.pdf" alt="Outils Technologies" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Organiser son dévprofessionnel/Mettre en place son envi/Outils_Technologies.pdf" alt="Outils Technologies" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
                   </div>
-                  <a href="assets/preuves_emaus/organiser-son-devprofessionnel-mettre-en-place-son-envi-outilstechnologies.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
+                  <a href="assets/preuves_emaus/EMAUS/Organiser son dévprofessionnel/Mettre en place son envi/Outils_Technologies.pdf" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir la capture</a>
               </article>
           </div>
       </template>
@@ -858,10 +859,10 @@
                       <h4>Modèle Conceptuel de Données (MCD)</h4>
                   </div>
                   <div class="proof-image-wrapper">
-                      <img src="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-evolution-site-web-mcd.png" alt="MCD Base de données" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1542621334-a254cf47733d?q=80&w=800&auto=format&fit=crop';" />
+                      <img src="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Participer à l’évolution d’un site Web exploitant les données de l’organisation/1774709625792-c975b9ea-533b-4a59-b797-69b18c687388-MCD.png" alt="MCD Base de données" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1542621334-a254cf47733d?q=80&w=800&auto=format&fit=crop';" />
                   </div>
                   <p class="proof-demo"><strong>Ce que cela démontre :</strong> La conception logique structurée des tables Utilisateurs, Actualités et Candidatures, avec les relations associées.</p>
-                  <a href="assets/preuves_emaus/developper-la-presence-en-ligne-de-lorganisation-evolution-site-web-mcd.png" target="_blank" class="btn btn--sm proof-btn">Voir le MCD</a>
+                  <a href="assets/preuves_emaus/EMAUS/Développer la présence en ligne de l’organisation/Participer à l’évolution d’un site Web exploitant les données de l’organisation/1774709625792-c975b9ea-533b-4a59-b797-69b18c687388-MCD.png" target="_blank" class="btn btn--sm proof-btn">Voir le MCD</a>
               </article>
           </div>
       </template>
