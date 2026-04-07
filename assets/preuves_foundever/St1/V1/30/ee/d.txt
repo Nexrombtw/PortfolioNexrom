@@ -1,0 +1,1410 @@
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+# Vérification du module Active Directory
+try {
+    Import-Module ActiveDirectory -ErrorAction Stop
+    Write-Host "Module Active Directory chargé avec succès" -ForegroundColor Green
+} catch {
+    [System.Windows.Forms.MessageBox]::Show("Le module Active Directory n'est pas disponible. Veuillez l'installer ou exécuter le script sur un contrôleur de domaine.", "Erreur critique", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+    exit 1
+}
+
+# Configuration globale avec gestion d'erreurs robuste
+$script:Config = @{
+    BaseOU = "OU=FR,DC=Marche,DC=lan"
+    SettingsPath = Join-Path $env:APPDATA "InfoADScriptSettings.json"
+    LogPath = Join-Path $env:TEMP "ADUserManagement.log"
+    MaxRetries = 3
+    TimeoutSeconds = 30
+}
+
+# Variable pour contrôler l'affichage initial
+$script:InitialLoadDone = $false
+
+# Variables pour le suivi de l'initialisation des onglets
+$script:GroupsTabInitialized = $false
+$script:ReportsTabInitialized = $false
+$script:SettingsTabInitialized = $false
+
+# Variables UI critiques en portée script avec initialisation sécurisée
+$script:UIControls = @{
+    Form = $null
+    MainTabControl = $null
+    TabUsers = $null
+    TabGroups = $null
+    TabReports = $null
+    TabSettings = $null
+    btnReset = $null
+    btnDisable = $null
+    chkForce = $null
+    detail = @{}
+    lbUsers = $null
+    cbCity = $null
+    txtSearch = $null
+    lbGrps = $null
+    txtGroupSearch = $null
+    txtGroupsSearch = $null
+    lbAllGroups = $null
+    rtbReports = $null
+    btnMoveUser = $null
+    logoBox = $null
+}
+
+# Système de logging avancé
+function Write-Log {
+    param(
+        [string]$Message,
+        [ValidateSet('Info', 'Warning', 'Error', 'Debug')]
+        [string]$Level = 'Info'
+    )
+    
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $logEntry = "[$timestamp] [$Level] $Message"
+    
+    try {
+        Add-Content -Path $script:Config.LogPath -Value $logEntry -ErrorAction SilentlyContinue
+    } catch {
+        # Fallback si impossible d'écrire dans le log
+    }
+    
+    # Affichage console selon le niveau
+    switch ($Level) {
+        'Error' { Write-Host $logEntry -ForegroundColor Red }
+        'Warning' { Write-Host $logEntry -ForegroundColor Yellow }
+        'Info' { Write-Host $logEntry -ForegroundColor Green }
+        'Debug' { Write-Host $logEntry -ForegroundColor Cyan }
+    }
+}
+
+# Gestion des paramètres avec validation
+function Load-FavoriteCity {
+    try {
+        if (Test-Path $script:Config.SettingsPath) {
+            $json = Get-Content $script:Config.SettingsPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+            if ($json.PSObject.Properties.Name -contains 'FavoriteCity') {
+                Write-Log "Ville favorite chargée: $($json.FavoriteCity)" -Level Debug
+                return $json.FavoriteCity
+            }
+        }
+    } catch {
+        Write-Log "Erreur lors du chargement de la ville favorite: $($_.Exception.Message)" -Level Warning
+    }
+    return $null
+}
+
+function Save-FavoriteCity {
+    param([string]$City)
+    
+    $cleanCity = $City -replace "⭐ ", ""
+    
+    if ([string]::IsNullOrWhiteSpace($cleanCity)) {
+        Write-Log "Tentative de sauvegarde d'une ville vide" -Level Warning
+        return
+    }
+    
+    try {
+        $settings = @{ FavoriteCity = $cleanCity }
+        $settings | ConvertTo-Json | Set-Content $script:Config.SettingsPath -ErrorAction Stop
+        Write-Log "Ville favorite sauvegardée: $cleanCity" -Level Info
+        
+        $currentSelection = $script:UIControls.cbCity.SelectedItem
+        Load-Cities
+        
+        $favoriteWithStar = "⭐ $cleanCity"
+        if ($script:UIControls.cbCity.Items.Contains($favoriteWithStar)) {
+            $script:UIControls.cbCity.SelectedItem = $favoriteWithStar
+        }
+        
+    } catch {
+        Write-Log "Erreur lors de la sauvegarde de la ville favorite: $($_.Exception.Message)" -Level Error
+    }
+}
+
+# Thème neutre sans couleurs
+$script:Theme = @{
+    Background = [System.Drawing.Color]::FromArgb(240, 240, 240)
+    Text = [System.Drawing.Color]::FromArgb(60, 60, 60)
+    Primary = [System.Drawing.Color]::FromArgb(80, 80, 80)
+    Secondary = [System.Drawing.Color]::FromArgb(120, 120, 120)
+    ButtonPrimary = [System.Drawing.Color]::FromArgb(90, 90, 90)
+    ButtonSecondary = [System.Drawing.Color]::FromArgb(110, 110, 110)
+    Light = [System.Drawing.Color]::FromArgb(250, 250, 250)
+    Dark = [System.Drawing.Color]::FromArgb(70, 70, 70)
+    White = [System.Drawing.Color]::White
+    ButtonBorder = [System.Drawing.Color]::FromArgb(100, 100, 100)
+}
+
+# Fonction de validation AD avec retry
+function Test-ADConnection {
+    param([int]$MaxRetries = $script:Config.MaxRetries)
+    
+    for ($i = 1; $i -le $MaxRetries; $i++) {
+        try {
+            $domain = Get-ADDomain -ErrorAction Stop
+            Write-Log "Connexion AD réussie au domaine: $($domain.DNSRoot)" -Level Info
+            return $true
+        } catch {
+            Write-Log "Tentative $i/$MaxRetries - Erreur de connexion AD: $($_.Exception.Message)" -Level Warning
+            if ($i -lt $MaxRetries) {
+                Start-Sleep -Seconds 2
+            }
+        }
+    }
+    return $false
+}
+
+# Validation et nettoyage des entrées utilisateur
+function Get-SafeInput {
+    param(
+        [string]$Input,
+        [ValidateSet('Username', 'Search', 'General')]
+        [string]$Type = 'General'
+    )
+    
+    if ([string]::IsNullOrWhiteSpace($Input)) {
+        return ""
+    }
+    
+    $cleaned = $Input.Trim()
+    
+    switch ($Type) {
+        'Username' {
+            $cleaned = $cleaned -replace '[<>:"/\\|?*]', ''
+            $cleaned = $cleaned -replace '\s+', ' '
+        }
+        'Search' {
+            $cleaned = $cleaned -replace '[\(\)\*\\]', ''
+        }
+    }
+    
+    return $cleaned.Substring(0, [Math]::Min($cleaned.Length, 256))
+}
+
+# Fonctions de messagerie améliorées
+function Show-ErrorMessage {
+    param([string]$Title, [string]$Message)
+    Write-Log "ERREUR - $Title : $Message" -Level Error
+    [System.Windows.Forms.MessageBox]::Show($Message, $Title, [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+}
+
+function Show-InfoMessage {
+    param([string]$Message, [string]$Title = "Information")
+    Write-Log "INFO - $Title : $Message" -Level Info
+    [System.Windows.Forms.MessageBox]::Show($Message, $Title, [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+}
+
+function Show-ConfirmDialog {
+    param([string]$Message, [string]$Title = "Confirmation")
+    $result = [System.Windows.Forms.MessageBox]::Show($Message, $Title, [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Question)
+    return ($result -eq [System.Windows.Forms.DialogResult]::Yes)
+}
+
+# Génération sécurisée de mot de passe
+function New-SecurePassword {
+    param([string]$EmployeeID)
+    
+    if ([string]::IsNullOrWhiteSpace($EmployeeID)) {
+        throw "ID employé requis pour générer le mot de passe"
+    }
+    
+    $randomNumbers = -join ((0..9) | Get-Random -Count 6)
+    $specialChars = @('!', '@', '#', '$', '%', '&', '*')
+    $specialChar = $specialChars | Get-Random
+    
+    return "Foundever@$EmployeeID$specialChar$randomNumbers"
+}
+
+# Fonction pour gérer les valeurs nulles
+function Get-ValueOrDefault {
+    param(
+        [Parameter(ValueFromPipeline)]
+        $Value,
+        [string]$Default = ""
+    )
+    
+    if ($null -eq $Value -or [string]::IsNullOrWhiteSpace($Value)) {
+        return $Default
+    }
+    return $Value.ToString()
+}
+
+# Fonction pour gérer les raccourcis clavier globaux
+function Initialize-KeyboardShortcuts {
+    try {
+        # Activer la capture des touches au niveau du formulaire
+        $script:UIControls.Form.KeyPreview = $true
+        
+        # Gestionnaire d'événements pour les raccourcis clavier
+        $script:UIControls.Form.Add_KeyDown({
+            param($sender, $e)
+            
+            # Ctrl+F : Focus sur le champ de recherche
+            if ($e.Control -and $e.KeyCode -eq 'F') {
+                if ($script:UIControls.MainTabControl.SelectedIndex -eq 0) {
+                    $script:UIControls.txtSearch.Focus()
+                    $script:UIControls.txtSearch.SelectAll()
+                }
+                $e.SuppressKeyPress = $true
+                Write-Log "Raccourci Ctrl+F activé - Focus sur recherche" -Level Debug
+            }
+            
+            # F5 : Actualiser selon l'onglet actif
+            elseif ($e.KeyCode -eq 'F5') {
+                try {
+                    switch ($script:UIControls.MainTabControl.SelectedIndex) {
+                        0 { # Onglet Utilisateurs
+                            Refresh-Users
+                            Write-Log "F5 - Liste utilisateurs actualisée" -Level Info
+                        }
+                        1 { # Onglet Groupes
+                            Refresh-GroupsList
+                            Write-Log "F5 - Liste groupes actualisée" -Level Info
+                        }
+                        2 { # Onglet Rapports
+                            Refresh-Reports
+                            Write-Log "F5 - Rapports actualisés" -Level Info
+                        }
+                        default {
+                            Write-Log "F5 - Onglet non supporté pour l'actualisation" -Level Warning
+                        }
+                    }
+                } catch {
+                    Show-ErrorMessage "Erreur d'actualisation" $_.Exception.Message
+                }
+                $e.SuppressKeyPress = $true
+            }
+            
+            # Ctrl+R : Réinitialiser mot de passe (onglet utilisateurs uniquement)
+            elseif ($e.Control -and $e.KeyCode -eq 'R') {
+                if ($script:UIControls.MainTabControl.SelectedIndex -eq 0 -and $script:UIControls.lbUsers.SelectedItem) {
+                    try {
+                        Reset-UserPassword
+                        Write-Log "Raccourci Ctrl+R activé - Réinitialisation mot de passe" -Level Info
+                    } catch {
+                        Show-ErrorMessage "Erreur de réinitialisation" $_.Exception.Message
+                    }
+                }
+                $e.SuppressKeyPress = $true
+            }
+            
+            # Ctrl+D : Activer/Désactiver compte (onglet utilisateurs uniquement)
+            elseif ($e.Control -and $e.KeyCode -eq 'D') {
+                if ($script:UIControls.MainTabControl.SelectedIndex -eq 0 -and $script:UIControls.lbUsers.SelectedItem) {
+                    try {
+                        if ($script:UIControls.btnDisable.Text -eq "Désactiver compte") {
+                            Disable-UserAccount
+                        } else {
+                            Enable-UserAccount
+                        }
+                        Write-Log "Raccourci Ctrl+D activé - Basculement état compte" -Level Info
+                    } catch {
+                        Show-ErrorMessage "Erreur d'opération" $_.Exception.Message
+                    }
+                }
+                $e.SuppressKeyPress = $true
+            }
+            
+            # Ctrl+G : Focus sur recherche de groupes
+            elseif ($e.Control -and $e.KeyCode -eq 'G') {
+                if ($script:UIControls.MainTabControl.SelectedIndex -eq 0) {
+                    $script:UIControls.txtGroupSearch.Focus()
+                    $script:UIControls.txtGroupSearch.SelectAll()
+                } elseif ($script:UIControls.MainTabControl.SelectedIndex -eq 1) {
+                    $script:UIControls.txtGroupsSearch.Focus()
+                    $script:UIControls.txtGroupsSearch.SelectAll()
+                }
+                $e.SuppressKeyPress = $true
+                Write-Log "Raccourci Ctrl+G activé - Focus sur recherche groupes" -Level Debug
+            }
+            
+            # Ctrl+Tab : Changer d'onglet vers la droite
+            elseif ($e.Control -and $e.KeyCode -eq 'Tab') {
+                $currentIndex = $script:UIControls.MainTabControl.SelectedIndex
+                $nextIndex = ($currentIndex + 1) % $script:UIControls.MainTabControl.TabCount
+                $script:UIControls.MainTabControl.SelectedIndex = $nextIndex
+                $e.SuppressKeyPress = $true
+                Write-Log "Raccourci Ctrl+Tab - Changement d'onglet vers $nextIndex" -Level Debug
+            }
+            
+            # Échap : Effacer les sélections selon l'onglet
+            elseif ($e.KeyCode -eq 'Escape') {
+                switch ($script:UIControls.MainTabControl.SelectedIndex) {
+                    0 { # Onglet Utilisateurs
+                        $script:UIControls.txtSearch.Text = ""
+                        $script:UIControls.lbUsers.ClearSelected()
+                        Clear-UserDetails
+                    }
+                    1 { # Onglet Groupes
+                        $script:UIControls.txtGroupsSearch.Text = ""
+                        $script:UIControls.lbAllGroups.ClearSelected()
+                    }
+                }
+                $e.SuppressKeyPress = $true
+                Write-Log "Raccourci Échap activé - Sélections effacées" -Level Debug
+            }
+        })
+        
+        Write-Log "Raccourcis clavier initialisés" -Level Info
+        return $true
+    } catch {
+        Write-Log "Erreur lors de l'initialisation des raccourcis clavier: $($_.Exception.Message)" -Level Error
+        return $false
+    }
+}
+
+# Fonction pour créer l'interface avec onglets
+function Initialize-TabbedInterface {
+    try {
+        # Créer le contrôle TabControl principal
+        $script:UIControls.MainTabControl = New-Object System.Windows.Forms.TabControl -Property @{
+            Location = [System.Drawing.Point]::new(15, 10)
+            Size = [System.Drawing.Size]::new(1380, 840)
+            BackColor = $script:Theme.Background
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+            Anchor = 'Top,Left,Right,Bottom'
+            ShowToolTips = $true
+            HotTrack = $true
+        }
+        
+        # Onglet 1 : Gestion des Utilisateurs
+        $script:UIControls.TabUsers = New-Object System.Windows.Forms.TabPage -Property @{
+            Text = "👤 Gestion Utilisateurs"
+            BackColor = $script:Theme.Background
+            ToolTipText = "Rechercher, modifier et gérer les comptes utilisateurs (F5 pour actualiser)"
+            UseVisualStyleBackColor = $true
+        }
+        
+        # Onglet 2 : Gestion des Groupes
+        $script:UIControls.TabGroups = New-Object System.Windows.Forms.TabPage -Property @{
+            Text = "👥 Gestion Groupes"
+            BackColor = $script:Theme.Background
+            ToolTipText = "Gérer les groupes et les appartenances (Ctrl+G pour rechercher)"
+            UseVisualStyleBackColor = $true
+        }
+        
+        # Onglet 3 : Rapports et Statistiques
+        $script:UIControls.TabReports = New-Object System.Windows.Forms.TabPage -Property @{
+            Text = "📊 Rapports"
+            BackColor = $script:Theme.Background
+            ToolTipText = "Consulter les rapports et statistiques AD (F5 pour actualiser)"
+            UseVisualStyleBackColor = $true
+        }
+        
+        # Onglet 4 : Paramètres
+        $script:UIControls.TabSettings = New-Object System.Windows.Forms.TabPage -Property @{
+            Text = "⚙️ Paramètres"
+            BackColor = $script:Theme.Background
+            ToolTipText = "Configuration et préférences de l'application"
+            UseVisualStyleBackColor = $true
+        }
+        
+        # Ajouter les onglets au TabControl
+        $script:UIControls.MainTabControl.TabPages.AddRange(@(
+            $script:UIControls.TabUsers, 
+            $script:UIControls.TabGroups, 
+            $script:UIControls.TabReports, 
+            $script:UIControls.TabSettings
+        ))
+        
+        # Événement de changement d'onglet
+        $script:UIControls.MainTabControl.Add_SelectedIndexChanged({
+            $tabName = $script:UIControls.MainTabControl.SelectedTab.Text
+            Write-Log "Changement vers l'onglet: $tabName" -Level Debug
+            
+            # Actions spécifiques selon l'onglet
+            switch ($script:UIControls.MainTabControl.SelectedIndex) {
+                1 { # Onglet Groupes
+                    if (-not $script:GroupsTabInitialized) {
+                        Initialize-GroupsTabContent
+                        $script:GroupsTabInitialized = $true
+                    }
+                }
+                2 { # Onglet Rapports
+                    if (-not $script:ReportsTabInitialized) {
+                        Initialize-ReportsTabContent
+                        $script:ReportsTabInitialized = $true
+                    }
+                }
+                3 { # Onglet Paramètres
+                    if (-not $script:SettingsTabInitialized) {
+                        Initialize-SettingsTabContent
+                        $script:SettingsTabInitialized = $true
+                    }
+                }
+            }
+        })
+        
+        # Initialiser le contenu de l'onglet utilisateurs
+        Initialize-UsersTabContent $script:UIControls.TabUsers
+        
+        # Ajouter le TabControl au formulaire principal
+        $script:UIControls.Form.Controls.Add($script:UIControls.MainTabControl)
+        
+        Write-Log "Interface avec onglets initialisée" -Level Info
+        return $true
+    } catch {
+        Write-Log "Erreur lors de l'initialisation de l'interface avec onglets: $($_.Exception.Message)" -Level Error
+        return $false
+    }
+}
+
+# Onglet Gestion des Utilisateurs (contenu existant reorganisé)
+function Initialize-UsersTabContent {
+    param([System.Windows.Forms.TabPage]$TabPage)
+    
+    try {
+        # Groupe de recherche (repositionné pour l'onglet)
+        $grpSearch = New-Object System.Windows.Forms.GroupBox -Property @{
+            Text = "🔍 Recherche utilisateur (Ctrl+F pour focus)"
+            Location = [System.Drawing.Point]::new(10, 10)
+            Size = [System.Drawing.Size]::new(1340, 85)
+            BackColor = $script:Theme.Background
+            ForeColor = $script:Theme.Primary
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        # Contrôles de recherche (adaptés du code existant)
+        $lblCity = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Ville :"
+            Location = [System.Drawing.Point]::new(20, 35)
+            Size = [System.Drawing.Size]::new(50, 25)
+            TextAlign = 'MiddleRight'
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $script:UIControls.cbCity = New-Object System.Windows.Forms.ComboBox -Property @{
+            Location = [System.Drawing.Point]::new(80, 33)
+            Width = 130
+            DropDownStyle = 'DropDownList'
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            DrawMode = 'OwnerDrawFixed'
+        }
+        
+        # Événement pour dessiner l'étoile en jaune
+        $script:UIControls.cbCity.Add_DrawItem({
+            param($sender, $e)
+            if ($e.Index -ge 0) {
+                $item = $sender.Items[$e.Index].ToString()
+                $e.DrawBackground()
+                if ($item.StartsWith("⭐")) {
+                    $starBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::Gold)
+                    $textBrush = [System.Drawing.SolidBrush]::new($e.ForeColor)
+                    $e.Graphics.DrawString("⭐", $e.Font, $starBrush, $e.Bounds.Left + 2, $e.Bounds.Top + 2)
+                    $cityName = $item.Substring(2)
+                    $e.Graphics.DrawString($cityName, $e.Font, $textBrush, $e.Bounds.Left + 20, $e.Bounds.Top + 2)
+                    $starBrush.Dispose()
+                    $textBrush.Dispose()
+                } else {
+                    $textBrush = [System.Drawing.SolidBrush]::new($e.ForeColor)
+                    $e.Graphics.DrawString($item, $e.Font, $textBrush, $e.Bounds.Left + 2, $e.Bounds.Top + 2)
+                    $textBrush.Dispose()
+                }
+                $e.DrawFocusRectangle()
+            }
+        })
+        
+        $btnFavori = New-Object System.Windows.Forms.Button -Property @{
+            Text = "⭐ Favori"
+            Location = [System.Drawing.Point]::new(220, 32)
+            Width = 80
+            Height = 30
+            BackColor = $script:Theme.Secondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $lblSearch = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Rechercher (Ctrl+F) :"
+            Location = [System.Drawing.Point]::new(320, 35)
+            Size = [System.Drawing.Size]::new(140, 25)
+            TextAlign = 'MiddleRight'
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $script:UIControls.txtSearch = New-Object System.Windows.Forms.TextBox -Property @{
+            Location = [System.Drawing.Point]::new(470, 33)
+            Width = 210
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $btnSearch = New-Object System.Windows.Forms.Button -Property @{
+            Text = "🔍 Rechercher"
+            Location = [System.Drawing.Point]::new(690, 31)
+            Width = 120
+            Height = 32
+            BackColor = $script:Theme.Primary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $btnClear = New-Object System.Windows.Forms.Button -Property @{
+            Text = "🗑️ Effacer"
+            Location = [System.Drawing.Point]::new(820, 31)
+            Width = 100
+            Height = 32
+            BackColor = $script:Theme.Secondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $btnRefresh = New-Object System.Windows.Forms.Button -Property @{
+            Text = "🔄 Actualiser (F5)"
+            Location = [System.Drawing.Point]::new(930, 31)
+            Width = 140
+            Height = 32
+            BackColor = [System.Drawing.Color]::FromArgb(34, 139, 34)
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        # Ajouter les contrôles au groupe de recherche
+        $grpSearch.Controls.AddRange(@($lblCity, $script:UIControls.cbCity, $btnFavori, $lblSearch, $script:UIControls.txtSearch, $btnSearch, $btnClear, $btnRefresh))
+        
+        # Liste des utilisateurs (repositionnée)
+        $script:UIControls.lbUsers = New-Object System.Windows.Forms.ListBox -Property @{
+            Location = [System.Drawing.Point]::new(10, 105)
+            Size = [System.Drawing.Size]::new(310, 680)
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 10)
+            SelectionMode = 'One'
+        }
+        
+        # Panneau de détails (repositionné)
+        $grpDetails = New-Object System.Windows.Forms.GroupBox -Property @{
+            Text = "ℹ️ Informations utilisateur"
+            Location = [System.Drawing.Point]::new(330, 105)
+            Size = [System.Drawing.Size]::new(670, 680)
+            BackColor = $script:Theme.Background
+            ForeColor = $script:Theme.Primary
+            Font = [System.Drawing.Font]::new("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        # Panneau des groupes (repositionné)
+        $grpGroups = New-Object System.Windows.Forms.GroupBox -Property @{
+            Text = "👥 Groupes d'appartenance (Ctrl+G)"
+            Location = [System.Drawing.Point]::new(1010, 105)
+            Size = [System.Drawing.Size]::new(340, 680)
+            BackColor = $script:Theme.Background
+            ForeColor = $script:Theme.Primary
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        # Ajouter tous les contrôles à l'onglet
+        $TabPage.Controls.AddRange(@($grpSearch, $script:UIControls.lbUsers, $grpDetails, $grpGroups))
+        
+        # Initialiser le contenu des panneaux
+        Initialize-DetailsPanel-ForTab $grpDetails
+        Initialize-GroupsPanel-ForTab $grpGroups
+        
+        # Événements
+        $btnSearch.Add_Click({ 
+            try { Refresh-Users } 
+            catch { Show-ErrorMessage "Erreur lors de la recherche" $_.Exception.Message }
+        })
+        
+        $btnClear.Add_Click({
+            try {
+                $script:UIControls.txtSearch.Text = ""
+                $script:UIControls.lbUsers.Items.Clear()
+                Clear-UserDetails
+                Write-Log "Recherche effacée - liste complètement vidée" -Level Info
+            } catch { 
+                Show-ErrorMessage "Erreur lors de l'effacement" $_.Exception.Message 
+            }
+        })
+        
+        $btnRefresh.Add_Click({
+            try { Refresh-Users }
+            catch { Show-ErrorMessage "Erreur lors de l'actualisation" $_.Exception.Message }
+        })
+        
+        $script:UIControls.txtSearch.Add_KeyDown({
+            if ($_.KeyCode -eq 'Enter') {
+                try { Refresh-Users }
+                catch { Show-ErrorMessage "Erreur lors de la recherche" $_.Exception.Message }
+            }
+        })
+        
+        $script:UIControls.cbCity.Add_SelectedIndexChanged({
+            try { 
+                $script:UIControls.txtSearch.Text = ""
+                Clear-UserDetails
+                Refresh-Users
+                Write-Log "Changement de ville - tous les utilisateurs chargés" -Level Info
+            }
+            catch { Show-ErrorMessage "Erreur lors du changement de ville" $_.Exception.Message }
+        })
+        
+        $btnFavori.Add_Click({
+            try {
+                if ($script:UIControls.cbCity.SelectedItem) {
+                    Save-FavoriteCity $script:UIControls.cbCity.SelectedItem.ToString()
+                }
+            } catch { 
+                Write-Log "Erreur lors de la sauvegarde du favori: $($_.Exception.Message)" -Level Warning
+            }
+        })
+        
+        $script:UIControls.lbUsers.Add_SelectedIndexChanged({
+            try { Show-UserDetails }
+            catch { Show-ErrorMessage "Erreur lors de l'affichage des détails" $_.Exception.Message }
+        })
+        
+        Write-Log "Contenu de l'onglet Utilisateurs initialisé" -Level Info
+        return $true
+    } catch {
+        Write-Log "Erreur lors de l'initialisation du contenu de l'onglet Utilisateurs: $($_.Exception.Message)" -Level Error
+        return $false
+    }
+}
+
+# Fonction pour initialiser le panneau de détails dans l'onglet
+function Initialize-DetailsPanel-ForTab {
+    param([System.Windows.Forms.GroupBox]$GroupBox)
+    
+    try {
+        # Champs plus compacts avec police normale
+        $fields = @(
+            @{ Key="Path"; Label="Chemin AD :" },
+            @{ Key="Nom"; Label="Nom :" },
+            @{ Key="Prenom"; Label="Prénom :" },
+            @{ Key="Service"; Label="Service :" },
+            @{ Key="Matricule"; Label="Matricule :" },
+            @{ Key="Mail"; Label="Email :" },
+            @{ Key="Session"; Label="Nom de session :" },
+            @{ Key="Etat"; Label="État du compte :" },
+            @{ Key="Exp"; Label="Expiration compte :" },
+            @{ Key="ExpPwd"; Label="Exp. mot de passe :" },
+            @{ Key="LastLogon"; Label="Dernière connexion :" },
+            @{ Key="Created"; Label="Date de création :" }
+        )
+        
+        $currentY = 30
+        $labelWidth = 160
+        $valueWidth = 420
+        $spacing = 30
+        
+        foreach ($field in $fields) {
+            $lblStatic = New-Object System.Windows.Forms.Label -Property @{
+                Text = $field.Label
+                Location = [System.Drawing.Point]::new(20, $currentY)
+                Size = [System.Drawing.Size]::new($labelWidth, 24)
+                TextAlign = 'MiddleRight'
+                ForeColor = $script:Theme.Text
+                Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Regular)
+            }
+            
+            if ($field.Key -eq "Path") {
+                $valueControl = New-Object System.Windows.Forms.TextBox -Property @{
+                    Location = [System.Drawing.Point]::new(190, $currentY)
+                    Size = [System.Drawing.Size]::new(370, 24)
+                    ReadOnly = $true
+                    BackColor = $script:Theme.Light
+                    ForeColor = $script:Theme.Text
+                    Font = [System.Drawing.Font]::new("Segoe UI", 8, [System.Drawing.FontStyle]::Regular)
+                }
+                
+                $script:UIControls.btnMoveUser = New-Object System.Windows.Forms.Button -Property @{
+                    Text = "Déplacer"
+                    Location = [System.Drawing.Point]::new(570, $currentY)
+                    Size = [System.Drawing.Size]::new(90, 24)
+                    BackColor = $script:Theme.ButtonPrimary
+                    ForeColor = $script:Theme.White
+                    FlatStyle = 'Flat'
+                    Font = [System.Drawing.Font]::new("Segoe UI", 8, [System.Drawing.FontStyle]::Regular)
+                }
+                
+                $script:UIControls.btnMoveUser.Add_Click({
+                    try { Move-UserToOU }
+                    catch { Show-ErrorMessage "Erreur lors du déplacement" $_.Exception.Message }
+                })
+                
+                $GroupBox.Controls.AddRange(@($lblStatic, $valueControl, $script:UIControls.btnMoveUser))
+            } else {
+                $valueControl = New-Object System.Windows.Forms.Label -Property @{
+                    Location = [System.Drawing.Point]::new(190, $currentY)
+                    Size = [System.Drawing.Size]::new($valueWidth, 24)
+                    BorderStyle = 'Fixed3D'
+                    BackColor = $script:Theme.Light
+                    ForeColor = $script:Theme.Text
+                    TextAlign = 'MiddleLeft'
+                    Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Regular)
+                }
+                $GroupBox.Controls.AddRange(@($lblStatic, $valueControl))
+            }
+            
+            $script:UIControls.detail[$field.Key] = $valueControl
+            $currentY += $spacing
+        }
+        
+        # Séparateur visuel repositionné
+        $separator = New-Object System.Windows.Forms.Label -Property @{
+            Location = [System.Drawing.Point]::new(20, $currentY + 5)
+            Size = [System.Drawing.Size]::new(630, 2)
+            BackColor = $script:Theme.Primary
+        }
+        $GroupBox.Controls.Add($separator)
+        
+        # Case à cocher plus compacte
+        $chkPanel = New-Object System.Windows.Forms.Panel -Property @{
+            Location = [System.Drawing.Point]::new(15, $currentY + 15)
+            Size = [System.Drawing.Size]::new(640, 40)
+            BackColor = [System.Drawing.Color]::FromArgb(220, 220, 220)
+            BorderStyle = 'FixedSingle'
+        }
+        
+        $script:UIControls.chkForce = New-Object System.Windows.Forms.CheckBox -Property @{
+            Text = "Forcer le changement de mot de passe à la prochaine connexion"
+            Location = [System.Drawing.Point]::new(15, 10)
+            Size = [System.Drawing.Size]::new(610, 20)
+            ForeColor = $script:Theme.Dark
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Regular)
+            BackColor = [System.Drawing.Color]::Transparent
+        }
+        
+        # Synchronisation automatique avec AD
+        $script:UIControls.chkForce.Add_CheckedChanged({
+            try {
+                if ($script:UIControls.lbUsers.SelectedItem) {
+                    $selectedText = $script:UIControls.lbUsers.SelectedItem.ToString()
+                    if ($selectedText -match '\[([^\]]+)\]') {
+                        $samAccountName = $matches[1]
+                        
+                        if ($script:UIControls.chkForce.Checked) {
+                            Set-ADUser -Identity $samAccountName -ChangePasswordAtLogon:$true
+                            Write-Log "Case 'Forcer changement' cochée et synchronisée avec AD pour $samAccountName" -Level Info
+                        } else {
+                            Set-ADUser -Identity $samAccountName -ChangePasswordAtLogon:$false
+                            Write-Log "Case 'Forcer changement' décochée et synchronisée avec AD pour $samAccountName" -Level Info
+                        }
+                    }
+                }
+            } catch {
+                Write-Log "Erreur lors de la synchronisation avec AD: $($_.Exception.Message)" -Level Warning
+            }
+        })
+        
+        $chkPanel.Controls.Add($script:UIControls.chkForce)
+        $GroupBox.Controls.Add($chkPanel)
+        
+        # Boutons repositionnés
+        $buttonY = $currentY + 70
+        $buttonWidth = 310
+        $buttonSpacing = 15
+        
+        $script:UIControls.btnReset = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Réinitialiser mot de passe (Ctrl+R)"
+            Location = [System.Drawing.Point]::new(20, $buttonY)
+            Size = [System.Drawing.Size]::new($buttonWidth, 50)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Regular)
+            Cursor = [System.Windows.Forms.Cursors]::Hand
+        }
+        
+        $script:UIControls.btnDisable = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Désactiver compte (Ctrl+D)"
+            Location = [System.Drawing.Point]::new((20 + $buttonWidth + $buttonSpacing), $buttonY)
+            Size = [System.Drawing.Size]::new($buttonWidth, 50)
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Regular)
+            Cursor = [System.Windows.Forms.Cursors]::Hand
+        }
+        
+        $script:UIControls.btnReset.FlatAppearance.BorderColor = $script:Theme.Dark
+        $script:UIControls.btnReset.FlatAppearance.BorderSize = 1
+        $script:UIControls.btnDisable.FlatAppearance.BorderColor = $script:Theme.Dark
+        $script:UIControls.btnDisable.FlatAppearance.BorderSize = 1
+        
+        $GroupBox.Controls.AddRange(@($script:UIControls.btnReset, $script:UIControls.btnDisable))
+        
+        # Événements
+        $script:UIControls.btnReset.Add_Click({
+            try { Reset-UserPassword }
+            catch { Show-ErrorMessage "Erreur lors de la réinitialisation" $_.Exception.Message }
+        })
+        
+        $script:UIControls.btnDisable.Add_Click({
+            try { 
+                if ($script:UIControls.btnDisable.Text.StartsWith("Désactiver")) {
+                    Disable-UserAccount 
+                } else {
+                    Enable-UserAccount
+                }
+            }
+            catch { Show-ErrorMessage "Erreur lors de l'opération" $_.Exception.Message }
+        })
+        
+        Write-Log "Panneau de détails pour onglet initialisé" -Level Info
+    } catch {
+        Write-Log "Erreur lors de l'initialisation du panneau de détails pour onglet: $($_.Exception.Message)" -Level Error
+    }
+}
+
+# Fonction pour initialiser le panneau des groupes dans l'onglet
+function Initialize-GroupsPanel-ForTab {
+    param([System.Windows.Forms.GroupBox]$GroupBox)
+    
+    try {
+        $script:UIControls.lbGrps = New-Object System.Windows.Forms.ListBox -Property @{
+            Location = [System.Drawing.Point]::new(20, 30)
+            Size = [System.Drawing.Size]::new(300, 480)
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            SelectionMode = 'One'
+        }
+        
+        # Champ de recherche de groupes plus petit pour alignement parfait
+        $script:UIControls.txtGroupSearch = New-Object System.Windows.Forms.TextBox -Property @{
+            Location = [System.Drawing.Point]::new(20, 520)
+            Width = 200
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+        }
+        
+        # Placeholder pour la recherche
+        $script:UIControls.txtGroupSearch.Add_Enter({
+            if ($script:UIControls.txtGroupSearch.Text -eq "Rechercher un groupe...") {
+                $script:UIControls.txtGroupSearch.Text = ""
+                $script:UIControls.txtGroupSearch.ForeColor = $script:Theme.Text
+            }
+        })
+        
+        $script:UIControls.txtGroupSearch.Add_Leave({
+            if ([string]::IsNullOrWhiteSpace($script:UIControls.txtGroupSearch.Text)) {
+                $script:UIControls.txtGroupSearch.Text = "Rechercher un groupe..."
+                $script:UIControls.txtGroupSearch.ForeColor = [System.Drawing.Color]::Gray
+            }
+        })
+        
+        $script:UIControls.txtGroupSearch.Text = "Rechercher un groupe..."
+        $script:UIControls.txtGroupSearch.ForeColor = [System.Drawing.Color]::Gray
+        
+        $btnSearchGroup = New-Object System.Windows.Forms.Button -Property @{
+            Text = "🔍"
+            Location = [System.Drawing.Point]::new(230, 519)
+            Width = 30
+            Height = 30
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 8, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $btnAddGroup = New-Object System.Windows.Forms.Button -Property @{
+            Text = "➕"
+            Location = [System.Drawing.Point]::new(270, 519)
+            Width = 30
+            Height = 30
+            BackColor = [System.Drawing.Color]::FromArgb(34, 139, 34)
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 8, [System.Drawing.FontStyle]::Bold)
+            ToolTipText = "Ajouter à un groupe"
+        }
+        
+        # Bouton de suppression centré en bas
+        $btnRemoveGrp = New-Object System.Windows.Forms.Button -Property @{
+            Text = "➖ Retirer du groupe"
+            Location = [System.Drawing.Point]::new(20, 560)
+            Width = 300
+            Height = 40
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 8, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $GroupBox.Controls.AddRange(@($script:UIControls.lbGrps, $script:UIControls.txtGroupSearch, $btnSearchGroup, $btnAddGroup, $btnRemoveGrp))
+        
+        # Événements
+        $btnSearchGroup.Add_Click({
+            try { Search-ADGroups }
+            catch { Show-ErrorMessage "Erreur lors de la recherche de groupes" $_.Exception.Message }
+        })
+        
+        $btnAddGroup.Add_Click({
+            try { Search-ADGroups }
+            catch { Show-ErrorMessage "Erreur lors de la recherche de groupes" $_.Exception.Message }
+        })
+        
+        $script:UIControls.txtGroupSearch.Add_KeyDown({
+            if ($_.KeyCode -eq 'Enter') {
+                try { Search-ADGroups }
+                catch { Show-ErrorMessage "Erreur lors de la recherche de groupes" $_.Exception.Message }
+            }
+        })
+        
+        $btnRemoveGrp.Add_Click({
+            try { Remove-UserFromGroup }
+            catch { Show-ErrorMessage "Erreur lors de la suppression du groupe" $_.Exception.Message }
+        })
+        
+        Write-Log "Panneau des groupes pour onglet initialisé" -Level Info
+    } catch {
+        Write-Log "Erreur lors de l'initialisation du panneau des groupes pour onglet: $($_.Exception.Message)" -Level Error
+    }
+}
+
+# Onglet Gestion des Groupes
+function Initialize-GroupsTabContent {
+    try {
+        $grpGroupsSearch = New-Object System.Windows.Forms.GroupBox -Property @{
+            Text = "🔍 Recherche de groupes (Ctrl+G pour focus)"
+            Location = [System.Drawing.Point]::new(10, 10)
+            Size = [System.Drawing.Size]::new(1340, 85)
+            BackColor = $script:Theme.Background
+            ForeColor = $script:Theme.Primary
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $script:UIControls.txtGroupsSearch = New-Object System.Windows.Forms.TextBox -Property @{
+            Location = [System.Drawing.Point]::new(20, 35)
+            Width = 300
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 10)
+        }
+        
+        $btnGroupsSearch = New-Object System.Windows.Forms.Button -Property @{
+            Text = "🔍 Rechercher Groupes"
+            Location = [System.Drawing.Point]::new(330, 33)
+            Width = 150
+            Height = 30
+            BackColor = $script:Theme.Primary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $btnGroupsRefresh = New-Object System.Windows.Forms.Button -Property @{
+            Text = "🔄 Actualiser (F5)"
+            Location = [System.Drawing.Point]::new(490, 33)
+            Width = 140
+            Height = 30
+            BackColor = [System.Drawing.Color]::FromArgb(34, 139, 34)
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $grpGroupsSearch.Controls.AddRange(@($script:UIControls.txtGroupsSearch, $btnGroupsSearch, $btnGroupsRefresh))
+        
+        $script:UIControls.lbAllGroups = New-Object System.Windows.Forms.ListBox -Property @{
+            Location = [System.Drawing.Point]::new(10, 105)
+            Size = [System.Drawing.Size]::new(1340, 680)
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 10)
+            SelectionMode = 'One'
+        }
+        
+        $script:UIControls.TabGroups.Controls.AddRange(@($grpGroupsSearch, $script:UIControls.lbAllGroups))
+        
+        # Événements
+        $btnGroupsSearch.Add_Click({
+            try { Search-AllADGroups }
+            catch { Show-ErrorMessage "Erreur lors de la recherche de groupes" $_.Exception.Message }
+        })
+        
+        $btnGroupsRefresh.Add_Click({
+            try { Refresh-GroupsList }
+            catch { Show-ErrorMessage "Erreur lors de l'actualisation" $_.Exception.Message }
+        })
+        
+        $script:UIControls.txtGroupsSearch.Add_KeyDown({
+            if ($_.KeyCode -eq 'Enter') {
+                try { Search-AllADGroups }
+                catch { Show-ErrorMessage "Erreur lors de la recherche de groupes" $_.Exception.Message }
+            }
+        })
+        
+        Write-Log "Contenu de l'onglet Groupes initialisé" -Level Info
+    } catch {
+        Write-Log "Erreur lors de l'initialisation de l'onglet Groupes: $($_.Exception.Message)" -Level Error
+    }
+}
+
+# Onglet Rapports
+function Initialize-ReportsTabContent {
+    try {
+        $grpStats = New-Object System.Windows.Forms.GroupBox -Property @{
+            Text = "📊 Statistiques Active Directory (F5 pour actualiser)"
+            Location = [System.Drawing.Point]::new(10, 10)
+            Size = [System.Drawing.Size]::new(1340, 780)
+            BackColor = $script:Theme.Background
+            ForeColor = $script:Theme.Primary
+            Font = [System.Drawing.Font]::new("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $script:UIControls.rtbReports = New-Object System.Windows.Forms.RichTextBox -Property @{
+            Location = [System.Drawing.Point]::new(20, 30)
+            Size = [System.Drawing.Size]::new(1300, 740)
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Consolas", 10)
+            ReadOnly = $true
+        }
+        
+        $grpStats.Controls.Add($script:UIControls.rtbReports)
+        $script:UIControls.TabReports.Controls.Add($grpStats)
+        
+        # Charger les rapports initiaux
+        Refresh-Reports
+        
+        Write-Log "Contenu de l'onglet Rapports initialisé" -Level Info
+    } catch {
+        Write-Log "Erreur lors de l'initialisation de l'onglet Rapports: $($_.Exception.Message)" -Level Error
+    }
+}
+
+# Onglet Paramètres
+function Initialize-SettingsTabContent {
+    try {
+        $grpSettings = New-Object System.Windows.Forms.GroupBox -Property @{
+            Text = "⚙️ Configuration de l'application"
+            Location = [System.Drawing.Point]::new(10, 10)
+            Size = [System.Drawing.Size]::new(1340, 780)
+            BackColor = $script:Theme.Background
+            ForeColor = $script:Theme.Primary
+            Font = [System.Drawing.Font]::new("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        # Raccourcis clavier
+        $lblShortcuts = New-Object System.Windows.Forms.Label -Property @{
+            Text = "🔑 Raccourcis clavier disponibles :"
+            Location = [System.Drawing.Point]::new(20, 30)
+            Size = [System.Drawing.Size]::new(300, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Text
+        }
+        
+        $rtbShortcuts = New-Object System.Windows.Forms.RichTextBox -Property @{
+            Location = [System.Drawing.Point]::new(20, 60)
+            Size = [System.Drawing.Size]::new(600, 300)
+            BackColor = $script:Theme.Light
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 10)
+            ReadOnly = $true
+            Text = @"
+🔑 RACCOURCIS CLAVIER DISPONIBLES
+
+📋 Navigation générale :
+• Ctrl + F     : Focus sur le champ de recherche
+• F5           : Actualiser la liste/les données
+• Ctrl + Tab   : Changer d'onglet
+• Échap        : Effacer les sélections
+• Entrée       : Lancer la recherche (dans les champs de recherche)
+
+👤 Gestion des utilisateurs (Onglet Utilisateurs) :
+• Ctrl + R     : Réinitialiser le mot de passe
+• Ctrl + D     : Activer/Désactiver un compte
+• Ctrl + G     : Focus sur la recherche de groupes
+
+👥 Gestion des groupes (Onglet Groupes) :
+• Ctrl + G     : Focus sur la recherche de groupes
+• F5           : Actualiser la liste des groupes
+
+📊 Rapports (Onglet Rapports) :
+• F5           : Actualiser les statistiques
+
+💡 CONSEILS :
+• Utilisez les raccourcis pour une navigation plus rapide
+• Les tooltips affichent les raccourcis disponibles
+• F5 fonctionne différemment selon l'onglet actif
+"@
+        }
+        
+        $grpSettings.Controls.AddRange(@($lblShortcuts, $rtbShortcuts))
+        $script:UIControls.TabSettings.Controls.Add($grpSettings)
+        
+        Write-Log "Contenu de l'onglet Paramètres initialisé" -Level Info
+    } catch {
+        Write-Log "Erreur lors de l'initialisation de l'onglet Paramètres: $($_.Exception.Message)" -Level Error
+    }
+}
+
+# Fonction pour actualiser la liste des groupes
+function Refresh-GroupsList {
+    try {
+        $script:UIControls.lbAllGroups.Items.Clear()
+        $groups = Get-ADGroup -Filter * | Sort-Object Name | Select-Object -First 1000
+        
+        foreach ($group in $groups) {
+            $script:UIControls.lbAllGroups.Items.Add("$($group.Name) - $($group.GroupScope)")
+        }
+        
+        Write-Log "Liste des groupes actualisée - $($groups.Count) groupes chargés" -Level Info
+    } catch {
+        Write-Log "Erreur lors de l'actualisation des groupes: $($_.Exception.Message)" -Level Error
+        throw
+    }
+}
+
+# Fonction pour rechercher tous les groupes AD
+function Search-AllADGroups {
+    try {
+        $searchTerm = $script:UIControls.txtGroupsSearch.Text.Trim()
+        
+        if ([string]::IsNullOrWhiteSpace($searchTerm)) {
+            Refresh-GroupsList
+            return
+        }
+        
+        $script:UIControls.lbAllGroups.Items.Clear()
+        $groups = Get-ADGroup -Filter "Name -like '*$searchTerm*'" | Sort-Object Name | Select-Object -First 500
+        
+        foreach ($group in $groups) {
+            $script:UIControls.lbAllGroups.Items.Add("$($group.Name) - $($group.GroupScope)")
+        }
+        
+        Write-Log "Recherche de groupes terminée - $($groups.Count) groupes trouvés pour '$searchTerm'" -Level Info
+    } catch {
+        Write-Log "Erreur lors de la recherche de groupes: $($_.Exception.Message)" -Level Error
+        throw
+    }
+}
+
+# Fonction pour actualiser les rapports
+function Refresh-Reports {
+    try {
+        $script:UIControls.rtbReports.Clear()
+        
+        $report = @"
+📊 RAPPORT ACTIVE DIRECTORY - $(Get-Date -Format "dd/MM/yyyy HH:mm:ss")
+═══════════════════════════════════════════════════════════════
+
+👥 STATISTIQUES UTILISATEURS
+─────────────────────────────
+• Utilisateurs totaux     : $((Get-ADUser -Filter *).Count)
+• Utilisateurs actifs     : $((Get-ADUser -Filter {Enabled -eq $true}).Count)
+• Utilisateurs désactivés : $((Get-ADUser -Filter {Enabled -eq $false}).Count)
+• Mots de passe expirés   : $((Get-ADUser -Filter {PasswordExpired -eq $true}).Count)
+
+🏢 STATISTIQUES GROUPES
+─────────────────────────
+• Groupes totaux          : $((Get-ADGroup -Filter *).Count)
+• Groupes de sécurité     : $((Get-ADGroup -Filter {GroupCategory -eq "Security"}).Count)
+• Groupes de distribution : $((Get-ADGroup -Filter {GroupCategory -eq "Distribution"}).Count)
+
+🌐 INFORMATIONS DOMAINE
+─────────────────────────
+• Domaine                 : $((Get-ADDomain).DNSRoot)
+• Niveau fonctionnel      : $((Get-ADDomain).DomainMode)
+• Contrôleurs de domaine  : $((Get-ADDomainController -Filter *).Count)
+
+🔄 Dernière actualisation : $(Get-Date -Format "dd/MM/yyyy HH:mm:ss")
+Appuyez sur F5 pour actualiser les données
+"@
+        
+        $script:UIControls.rtbReports.Text = $report
+        Write-Log "Rapports actualisés" -Level Info
+    } catch {
+        Write-Log "Erreur lors de l'actualisation des rapports: $($_.Exception.Message)" -Level Error
+        $script:UIControls.rtbReports.Text = "Erreur lors de la génération du rapport : $($_.Exception.Message)"
+        throw
+    }
+}
+
+# ALIGNEMENT : Création de l'interface avec alignement parfait
+function Initialize-MainForm {
+    try {
+        $script:UIControls.Form = New-Object System.Windows.Forms.Form -Property @{
+            Text = "Gestion AD Utilisateurs - Version avec Onglets et Raccourcis"
+            Size = [System.Drawing.Size]::new(1420, 870)
+            StartPosition = "CenterScreen"
+            BackColor = $script:Theme.Background
+            Font = [System.Drawing.Font]::new("Segoe UI", 10)
+            FormBorderStyle = 'FixedDialog'
+            MaximizeBox = $false
+            MinimizeBox = $true
+            Icon = [System.Drawing.SystemIcons]::Application
+        }
+        
+        $script:UIControls.Form.Add_FormClosing({
+            param($sender, $e)
+            Write-Log "Fermeture de l'application" -Level Info
+        })
+        
+        Write-Log "Formulaire principal initialisé" -Level Info
+        return $true
+    } catch {
+        Write-Log "Erreur lors de l'initialisation du formulaire: $($_.Exception.Message)" -Level Error
+        return $false
+    }
+}
+
+# ALIGNEMENT : Logo parfaitement positionné à droite
+function Initialize-Logo {
+    try {
+        $script:UIControls.logoBox = New-Object System.Windows.Forms.PictureBox -Property @{
+            Location = [System.Drawing.Point]::new(945, 10)
+            Size = [System.Drawing.Size]::new(450, 85)
+            BackColor = $script:Theme.Background
+            SizeMode = 'Zoom'
+            Anchor = 'Top,Right'
+        }
+        
+        # Tentative de chargement du logo
+        $logoLocations = @(
+            ".\foundever_logo.png",
+            ".\foundever_logo.jpg",
+            ".\logo.png",
+            ".\logo.jpg",
+            "$env:USERPROFILE\Pictures\foundever_logo.png",
+            "$env:USERPROFILE\Desktop\foundever_logo.png"
+        )
+        
+        $logoLoaded = $false
+        foreach ($logoPath in $logoLocations) {
+            if (Test-Path $logoPath) {
+                try {
+                    $logoImage = [System.Drawing.Image]::FromFile((Get-Item $logoPath))
+                    $script:UIControls.logoBox.Image = $logoImage
+                    $logoLoaded = $true
+                    Write-Log "Logo Foundever chargé depuis: $logoPath" -Level Info
+                    break
+                } catch {
+                    Write-Log "Erreur lors du chargement du logo depuis $logoPath : $($_.Exception.Message)" -Level Warning
+                }
+            }
+        }
+        
+        # Placeholder si pas de logo
+        if (-not $logoLoaded) {
+            $script:UIControls.logoBox.BackColor = [System.Drawing.Color]::White
+            $script:UIControls.logoBox.BorderStyle = 'FixedSingle'
+            
+            $logoLabel = New-Object System.Windows.Forms.Label -Property @{
+                Text = "FOUNDEVER"
+                Location = [System.Drawing.Point]::new(0, 0)
+                Size = [System.Drawing.Size]::new(450, 85)
+                TextAlign = 'MiddleCenter'
+                Font = [System.Drawing.Font]::new("Segoe UI", 16, [System.Drawing.FontStyle]::Bold)
+                ForeColor = [System.Drawing.Color]::FromArgb(0, 102, 204)
+                BackColor = [System.Drawing.Color]::Transparent
+            }
+            $script:UIControls.logoBox.Controls.Add($logoLabel)
+            Write-Log "Logo Foundever non trouvé - placeholder texte créé" -Level Warning
+        }
+        
+        $script:UIControls.Form.Controls.Add($script:UIControls.logoBox)
+        Write-Log "Logo Foundever initialisé" -Level Info
+        return $true
+        
+    } catch {
+        Write-Log "Erreur lors de l'initialisation du logo: $($_.Exception.Message)" -Level Error
+        return $false
+    }
+}
+
+# Fonction principale d'initialisation modifiée pour les onglets
+function Initialize-Application {
+    try {
+        Write-Log "=== DÉMARRAGE DE L'APPLICATION AVEC ONGLETS ===" -Level Info
+        Write-Log "Version PowerShell: $($PSVersionTable.PSVersion)" -Level Info
+        Write-Log "Utilisateur: $env:USERNAME" -Level Info
+        Write-Log "Ordinateur: $env:COMPUTERNAME" -Level Info
+        
+        if (-not (Test-ADConnection)) {
+            Show-ErrorMessage "Connexion AD impossible" "Impossible de se connecter à Active Directory. Vérifiez votre connexion réseau et vos permissions."
+            return $false
+        }
+        
+        if (-not (Initialize-MainForm)) { return $false }
+        if (-not (Initialize-TabbedInterface)) { return $false }  # Interface avec onglets
+        if (-not (Initialize-KeyboardShortcuts)) { return $false }  # Raccourcis clavier
+        if (-not (Initialize-Logo)) { return $false }
+        
+        if (-not (Load-Cities)) { return $false }
+        
+        Write-Log "Application avec onglets et raccourcis initialisée avec succès" -Level Info
+        return $true
+        
+    } catch {
+        Write-Log "Erreur critique lors de l'initialisation: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur d'initialisation" "Impossible d'initialiser l'application: $($_.Exception.Message)"
+        return $false
+    }
+}
+
+# Point d'entrée principal
+try {
+    Write-Log "=== LANCEMENT DE L'APPLICATION DE GESTION AD AVEC ONGLETS ===" -Level Info
+    
+    if (Initialize-Application) {
+        Write-Log "Affichage de l'interface utilisateur avec onglets" -Level Info
+        $script:UIControls.Form.TopMost = $false
+        
+        $script:UIControls.Form.Add_FormClosed({
+            try {
+                if ($script:UIControls.logoBox -and $script:UIControls.logoBox.Image) {
+                    $script:UIControls.logoBox.Image.Dispose()
+                    Write-Log "Ressources du logo libérées" -Level Debug
+                }
+            } catch {
+                Write-Log "Erreur lors de la libération des ressources du logo: $($_.Exception.Message)" -Level Warning
+            }
+        })
+        
+        # Afficher un message de bienvenue avec les raccourcis
+        $welcomeMessage = @"
+🎉 APPLICATION DE GESTION AD AVEC ONGLETS DÉMARRÉE !
+
+🔑 RACCOURCIS CLAVIER DISPONIBLES :
+• Ctrl+F : Focus sur la recherche
+• F5 : Actualiser (selon l'onglet)
+• Ctrl+R : Réinitialiser mot de passe
+• Ctrl+D : Activer/Désactiver compte
+• Ctrl+G : Recherche de groupes
+• Ctrl+Tab : Changer d'onglet
+• Échap : Effacer les sélections
+
+📋 ONGLETS DISPONIBLES :
+• 👤 Gestion Utilisateurs
+• 👥 Gestion Groupes
+• 📊 Rapports
+• ⚙️ Paramètres
+
+Consultez l'onglet Paramètres pour plus d'informations !
+"@
+        
+        Write-Log $welcomeMessage -Level Info
+        
+        [void]$script:UIControls.Form.ShowDialog()
+    } else {
+        Write-Log "Échec de l'initialisation de l'application" -Level Error
+        exit 1
+    }
+    
+} catch {
+    Write-Log "Erreur fatale: $($_.Exception.Message)" -Level Error
+    Show-ErrorMessage "Erreur fatale" "Une erreur fatale s'est produite: $($_.Exception.Message)"
+    exit 1
+} finally {
+    try {
+        if ($script:UIControls.logoBox -and $script:UIControls.logoBox.Image) {
+            $script:UIControls.logoBox.Image.Dispose()
+        }
+    } catch {
+        # Ignore les erreurs de nettoyage
+    }
+    Write-Log "=== FIN DE L'EXÉCUTION DE L'APPLICATION AVEC ONGLETS ===" -Level Info
+}

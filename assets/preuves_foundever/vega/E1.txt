@@ -1,0 +1,286 @@
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+Import-Module ActiveDirectory
+
+# Thème simple
+$theme = @{
+    Back    = [Drawing.Color]::White
+    Text    = [Drawing.Color]::Black
+    Box     = [Drawing.Color]::White
+    List    = [Drawing.Color]::WhiteSmoke
+    Btn     = [Drawing.Color]::LightGray
+    BtnText = [Drawing.Color]::Black
+    Accent  = [Drawing.Color]::DarkBlue
+}
+
+# Formulaire principal
+$form = New-Object System.Windows.Forms.Form -Property @{
+    Text          = "Gestion AD Utilisateurs"
+    Size          = New-Object Drawing.Size(900,700)
+    StartPosition = "CenterScreen"
+    BackColor     = $theme.Back
+}
+
+# Ville / Recherche / Liste Users
+$lblCity = New-Object System.Windows.Forms.Label -Property @{
+    Text      = "Ville :"
+    Location  = New-Object Drawing.Point(10,10)
+    AutoSize  = $true
+    ForeColor = $theme.Text
+}
+$cbCity = New-Object System.Windows.Forms.ComboBox -Property @{
+    Location      = New-Object Drawing.Point(60,8)
+    Width         = 200
+    DropDownStyle = 'DropDownList'
+    BackColor     = $theme.List
+    ForeColor     = $theme.Text
+}
+$lblSearch = New-Object System.Windows.Forms.Label -Property @{
+    Text      = "Rechercher :"
+    Location  = New-Object Drawing.Point(280,10)
+    AutoSize  = $true
+    ForeColor = $theme.Text
+}
+$txtSearch = New-Object System.Windows.Forms.TextBox -Property @{
+    Location  = New-Object Drawing.Point(360,8)
+    Width     = 200
+    BackColor = $theme.Box
+    ForeColor = $theme.Text
+}
+$btnSearch = New-Object System.Windows.Forms.Button -Property @{
+    Text      = "OK"
+    Location  = New-Object Drawing.Point(570,6)
+    Width     = 40
+    BackColor = $theme.Btn
+    ForeColor = $theme.BtnText
+}
+$lbUsers = New-Object System.Windows.Forms.ListBox -Property @{
+    Location  = New-Object Drawing.Point(10,40)
+    Size      = New-Object Drawing.Size(300,200)
+    BackColor = $theme.List
+    ForeColor = $theme.Text
+}
+
+$form.Controls.AddRange(@($lblCity,$cbCity,$lblSearch,$txtSearch,$btnSearch,$lbUsers))
+
+# Chargement des villes via DirectoryServices (ADSI)
+$baseOU = "OU=FR,DC=Marche,DC=lan"
+$cbCity.Items.Clear()
+try {
+    $root = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$baseOU")
+    $searcher = New-Object System.DirectoryServices.DirectorySearcher($root)
+    $searcher.Filter = "(objectCategory=organizationalUnit)"
+    $searcher.SearchScope = [System.DirectoryServices.SearchScope]::OneLevel
+    $searcher.PropertiesToLoad.Add("ou") | Out-Null
+
+    $ous = $searcher.FindAll() | ForEach-Object {
+        if ($_.Properties["ou"].Count -gt 0) { $_.Properties["ou"][0] }
+    }
+
+    foreach ($ou in ($ous | Sort-Object)) { $cbCity.Items.Add($ou) }
+    if ($cbCity.Items.Count -gt 0) { $cbCity.SelectedIndex = 0 }
+} catch {
+    $cbCity.Items.AddRange(@('Paris','Lyon','Marseille','Bordeaux','Toulouse'))
+    $cbCity.SelectedIndex = 0
+}
+
+# Section Détails Utilisateur (Labels fixes + valeurs alignées)
+$fields = @(
+  @{ Key="Path";   Label="Path :" },
+  @{ Key="Nom";    Label="Nom :" },
+  @{ Key="Prenom"; Label="Prénom :" },
+  @{ Key="Service";Label="Service :" },
+  @{ Key="Matricule";Label="Matricule :" },
+  @{ Key="Mail";   Label="Adresse mail :" },
+  @{ Key="Session";Label="Nom session :" }
+)
+$detail = @{}
+$y = 260
+foreach ($f in $fields) {
+    $staticLbl = New-Object System.Windows.Forms.Label -Property @{
+        Text      = $f.Label
+        Location  = New-Object Drawing.Point(20, $y)
+        Size      = New-Object System.Drawing.Size(100,23)
+        ForeColor = $theme.Text
+        TextAlign = 'MiddleLeft'
+    }
+    $valueLbl = New-Object System.Windows.Forms.Label -Property @{
+        Location   = New-Object Drawing.Point(130, $y)
+        Size       = New-Object Drawing.Size(350,23)
+        BorderStyle= 'Fixed3D'
+        BackColor  = $theme.Box
+        ForeColor  = $theme.Text
+        TextAlign  = 'MiddleLeft'
+        Text       = ""
+        AutoSize   = $false
+    }
+    $form.Controls.AddRange(@($staticLbl,$valueLbl))
+    $detail[$f.Key] = $valueLbl
+    $y += 30
+}
+
+# Section Actions / Groupes
+$chkForce = New-Object System.Windows.Forms.CheckBox -Property @{
+    Text      = "Forcer changement MDP"
+    Location  = New-Object Drawing.Point(20, $y+10)
+    AutoSize  = $true
+    ForeColor = $theme.Text
+}
+$btnReset   = New-Object System.Windows.Forms.Button -Property @{
+    Text      = "Réinitialiser MDP"
+    Location  = New-Object Drawing.Point(20, $y+40)
+    Width     = 150
+    BackColor = $theme.Btn
+    ForeColor = $theme.BtnText
+}
+$btnDisable = New-Object System.Windows.Forms.Button -Property @{
+    Text      = "Désactiver Compte"
+    Location  = New-Object Drawing.Point(180, $y+40)
+    Width     = 150
+    BackColor = $theme.Btn
+    ForeColor = $theme.BtnText
+}
+$form.Controls.AddRange(@($chkForce,$btnReset,$btnDisable))
+
+# Section Groupes
+$lblGrps    = New-Object System.Windows.Forms.Label -Property @{
+    Text      = "Membre de :"
+    Location  = New-Object Drawing.Point(500,260)
+    AutoSize  = $true
+    ForeColor = $theme.Text
+}
+$lbGrps     = New-Object System.Windows.Forms.ListBox -Property @{
+    Location  = New-Object Drawing.Point(500,290)
+    Size      = New-Object Drawing.Size(300,120)
+    BackColor = $theme.List
+    ForeColor = $theme.Text
+}
+$cbAllGrps  = New-Object System.Windows.Forms.ComboBox -Property @{
+    Location      = New-Object Drawing.Point(500,420)
+    Width         = 200
+    DropDownStyle = 'DropDownList'
+    BackColor     = $theme.List
+    ForeColor     = $theme.Text
+}
+$btnMoveGrp = New-Object System.Windows.Forms.Button -Property @{
+    Text      = "Déplacer Groupe"
+    Location  = New-Object Drawing.Point(710,420)
+    Width     = 120
+    BackColor = $theme.Btn
+    ForeColor = $theme.BtnText
+}
+$btnAddGrp  = New-Object System.Windows.Forms.Button -Property @{
+    Text      = "Ajouter Groupe"
+    Location  = New-Object Drawing.Point(500,460)
+    Width     = 120
+    BackColor = $theme.Btn
+    ForeColor = $theme.BtnText
+}
+$btnRmGrp   = New-Object System.Windows.Forms.Button -Property @{
+    Text      = "Retirer Groupe"
+    Location  = New-Object Drawing.Point(630,460)
+    Width     = 120
+    BackColor = $theme.Btn
+    ForeColor = $theme.BtnText
+}
+$form.Controls.AddRange(@($lblGrps,$lbGrps,$cbAllGrps,$btnMoveGrp,$btnAddGrp,$btnRmGrp))
+
+# Charger tous les groupes AD dans cbAllGrps
+Get-ADGroup -Filter * | Sort-Object Name | ForEach-Object { $cbAllGrps.Items.Add($_.Name) }
+
+# Fonctions Métier
+function Remove-Accents([string]$s) {
+    if (-not $s) { return "" }
+    $d = $s.Normalize([Text.NormalizationForm]::FormD)
+    ($d.ToCharArray() | Where-Object { [Globalization.CharUnicodeInfo]::GetUnicodeCategory($_) -ne 'NonSpacingMark' }) -join ''
+}
+function Refresh-Users {
+    $lbUsers.Items.Clear()
+    if (-not $cbCity.SelectedItem) { return }
+    $ou = "OU=$($cbCity.SelectedItem),$baseOU"
+    $t  = Remove-Accents $txtSearch.Text.Trim()
+    $f  = if ($t) {"(&(objectCategory=person)(objectClass=user)(|(name=*$t*)(sn=*$t*)))"} else {"*"}
+    Get-ADUser -SearchBase $ou -LDAPFilter $f -Properties Name,SamAccountName |
+        Sort-Object Name | ForEach-Object { $lbUsers.Items.Add("$($_.Name) [$($_.SamAccountName)]") }
+}
+function Show-Details {
+    if (-not $lbUsers.SelectedItem) { return }
+    $sam = $lbUsers.SelectedItem -replace '.*\[(.+?)\]$','$1'
+    $u   = Get-ADUser $sam -Properties *
+    $detail["Path"].Text    = $u.DistinguishedName
+    $detail["Nom"].Text     = $u.Surname
+    $detail["Prenom"].Text  = $u.GivenName
+    $detail["Service"].Text = $u.Department
+    $detail["Matricule"].Text = $u.EmployeeID
+    $detail["Mail"].Text    = $u.EmailAddress
+    $detail["Session"].Text = $u.SamAccountName
+    $chkForce.Checked       = ($u.pwdLastSet -eq 0)
+    $lbGrps.Items.Clear()
+    Get-ADPrincipalGroupMembership $sam | Select-Object -Expand Name | Sort-Object |
+        ForEach-Object { $lbGrps.Items.Add($_) }
+}
+function Reset-Password {
+    if (-not $lbUsers.SelectedItem) { return }
+    $sam = $lbUsers.SelectedItem -replace '.*\[(.+?)\]$','$1'
+    $id  = Get-ADUser $sam -Properties EmployeeID
+    $pwd = "Foundever@$($id.EmployeeID)$(Get-RandomCode)"
+    Set-ADAccountPassword -Identity $sam -Reset -NewPassword (ConvertTo-SecureString $pwd -AsPlainText -Force)
+    Set-ADUser -Identity $sam -ChangePasswordAtLogon:$chkForce.Checked
+    [Windows.Forms.MessageBox]::Show("Nouveau MDP : $pwd","Info")
+}
+function Disable-Account {
+    if (-not $lbUsers.SelectedItem) { return }
+    $sam = $lbUsers.SelectedItem -replace '.*\[(.+?)\]$','$1'
+    $dst = "OU=Disabled Users,$baseOU"
+    Move-ADObject -Identity (Get-ADUser $sam).DistinguishedName -TargetPath $dst
+    Get-ADPrincipalGroupMembership $sam |
+        ForEach-Object { Remove-ADGroupMember -Identity $_.Name -Members $sam -Confirm:$false }
+    [Windows.Forms.MessageBox]::Show("Compte désactivé","Info")
+    Refresh-Users
+}
+function Move-Group {
+    if (-not $lbUsers.SelectedItem -or -not $lbGrps.SelectedItem -or -not $cbAllGrps.SelectedItem) {
+        [Windows.Forms.MessageBox]::Show("Sélectionnez utilisateur, groupe source et groupe cible.","Attention")
+        return
+    }
+    $sam = $lbUsers.SelectedItem -replace '.*\[(.+?)\]$','$1'
+    $src = $lbGrps.SelectedItem; $dst = $cbAllGrps.SelectedItem
+    $r   = [Windows.Forms.MessageBox]::Show(
+        "Déplacer $sam de '$src' vers '$dst' ?","Confirmation",
+        [Windows.Forms.MessageBoxButtons]::YesNo,[Windows.Forms.MessageBoxIcon]::Question
+    )
+    if ($r -ne 'Yes') { return }
+    Remove-ADGroupMember -Identity $src -Members $sam -Confirm:$false
+    Add-ADGroupMember    -Identity $dst -Members $sam
+    [Windows.Forms.MessageBox]::Show("Déplacement OK","Info")
+    Show-Details
+}
+function Add-Group {
+    if (-not $lbUsers.SelectedItem -or -not $cbAllGrps.SelectedItem) { return }
+    $sam = $lbUsers.SelectedItem -replace '.*\[(.+?)\]$','$1'
+    $g   = $cbAllGrps.SelectedItem
+    Add-ADGroupMember -Identity $g -Members $sam
+    Show-Details
+}
+function Remove-Group {
+    if (-not $lbUsers.SelectedItem -or -not $lbGrps.SelectedItem) { return }
+    $sam = $lbUsers.SelectedItem -replace '.*\[(.+?)\]$','$1'
+    $g   = $lbGrps.SelectedItem
+    Remove-ADGroupMember -Identity $g -Members $sam -Confirm:$false
+    Show-Details
+}
+
+# Événements UI
+$btnSearch.Add_Click({ Refresh-Users })
+$txtSearch.Add_KeyDown({ if ($_.KeyCode -eq 'Enter') { Refresh-Users } })
+$cbCity.Add_SelectedIndexChanged({ Refresh-Users })
+$lbUsers.Add_SelectedIndexChanged({ Show-Details })
+$btnReset.Add_Click({ Reset-Password })
+$btnDisable.Add_Click({ Disable-Account })
+$btnMoveGrp.Add_Click({ Move-Group })
+$btnAddGrp.Add_Click({ Add-Group })
+$btnRmGrp.Add_Click({ Remove-Group })
+
+# Lancement
+$form.Topmost = $true
+[void]$form.ShowDialog()

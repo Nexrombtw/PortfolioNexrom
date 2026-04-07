@@ -1,0 +1,258 @@
+function Add-UserToSelectedGroup {
+    param([string]$GroupName)
+    
+    # Validation des paramètres
+    if ([string]::IsNullOrWhiteSpace($GroupName)) {
+        Show-ErrorMessage "Erreur" "Nom de groupe invalide."
+        return
+    }
+    
+    # Vérification de la sélection utilisateur
+    if (-not $script:UIControls.lbUsers.SelectedItem) {
+        Show-InfoMessage "Veuillez sélectionner un utilisateur."
+        return
+    }
+    
+    $selectedText = $script:UIControls.lbUsers.SelectedItem.ToString()
+    if ($selectedText -match '\[([^\]]+)\]') {
+        $samAccountName = $matches[1]
+    } else {
+        Show-ErrorMessage "Erreur de sélection" "Impossible d'identifier l'utilisateur sélectionné."
+        return
+    }
+    
+    try {
+        Write-Log "Tentative d'ajout de $samAccountName au groupe $GroupName" -Level Debug
+        
+        # CORRECTION : Vérifications préalables
+        # Vérifier que l'utilisateur existe
+        try {
+            $user = Get-ADUser -Identity $samAccountName -Properties Enabled -ErrorAction Stop
+        } catch {
+            Show-ErrorMessage "Utilisateur introuvable" "L'utilisateur '$samAccountName' n'existe pas dans Active Directory."
+            return
+        }
+        
+        # Vérifier que le groupe existe
+        try {
+            $group = Get-ADGroup -Identity $GroupName -Properties GroupScope, GroupCategory -ErrorAction Stop
+        } catch {
+            Show-ErrorMessage "Groupe introuvable" "Le groupe '$GroupName' n'existe pas dans Active Directory."
+            return
+        }
+        
+        # Vérifier l'appartenance actuelle
+        try {
+            $currentGroups = Get-ADPrincipalGroupMembership -Identity $samAccountName -ErrorAction Stop | 
+                            Select-Object -ExpandProperty Name
+            
+            if ($currentGroups -contains $GroupName) {
+                Show-InfoMessage "L'utilisateur '$samAccountName' est déjà membre du groupe '$GroupName'."
+                return
+            }
+        } catch {
+            Write-Log "Impossible de vérifier l'appartenance actuelle: $($_.Exception.Message)" -Level Warning
+            # Continuer quand même
+        }
+        
+        # Confirmation
+        $confirmMessage = "Ajouter l'utilisateur au groupe ?`n`n" +
+                         "Utilisateur : $samAccountName`n" +
+                         "Groupe : $GroupName`n" +
+                         "Type : $($group.GroupCategory) ($($group.GroupScope))"
+        
+        if (-not (Show-ConfirmDialog $confirmMessage "Confirmation d'ajout")) {
+            return
+        }
+        
+        # CORRECTION : Ajout avec gestion d'erreurs détaillée
+        try {
+            Add-ADGroupMember -Identity $GroupName -Members $samAccountName -ErrorAction Stop
+            
+            Write-Log "Utilisateur $samAccountName ajouté au groupe $GroupName avec succès" -Level Info
+            
+            $successMessage = "AJOUT RÉUSSI`n`n" +
+                             "Utilisateur : $samAccountName`n" +
+                             "Groupe : $GroupName`n" +
+                             "Ajout effectué le : $(Get-Date -Format "dd/MM/yyyy à HH:mm:ss")"
+            
+            Show-InfoMessage $successMessage "Ajout réussi"
+            
+            # Rafraîchir l'affichage
+            Show-UserDetails
+            
+        } catch [Microsoft.ActiveDirectory.Management.ADException] {
+            if ($_.Exception.Message -match "insufficient access rights|access.*denied") {
+                Show-ErrorMessage "Permissions insuffisantes" "Vous n'avez pas les droits pour ajouter des membres à ce groupe.`n`nContactez votre administrateur système."
+            } elseif ($_.Exception.Message -match "already.*member") {
+                Show-InfoMessage "L'utilisateur est déjà membre de ce groupe."
+                Show-UserDetails
+            } else {
+                Show-ErrorMessage "Erreur Active Directory" "Erreur lors de l'ajout au groupe :`n$($_.Exception.Message)"
+            }
+        } catch {
+            Write-Log "Erreur inattendue: $($_.Exception.Message)" -Level Error
+            Show-ErrorMessage "Erreur inattendue" "Une erreur s'est produite :`n$($_.Exception.Message)"
+        }
+        
+    } catch {
+        Write-Log "Erreur critique dans Add-UserToSelectedGroup: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur critique" "Erreur inattendue :`n$($_.Exception.Message)"
+    }
+}
+
+
+
+
+function Search-ADGroups {
+    try {
+        # Vérification du champ de recherche
+        if (-not $script:UIControls.txtGroupSearch) {
+            Show-ErrorMessage "Erreur interface" "Champ de recherche des groupes introuvable."
+            return
+        }
+        
+        $searchTerm = $script:UIControls.txtGroupSearch.Text.Trim()
+        
+        if ([string]::IsNullOrWhiteSpace($searchTerm) -or $searchTerm -eq "Rechercher un groupe...") {
+            Show-InfoMessage "Veuillez saisir un terme de recherche pour les groupes."
+            return
+        }
+        
+        if ($searchTerm.Length -lt 2) {
+            Show-InfoMessage "Veuillez saisir au moins 2 caractères pour la recherche."
+            return
+        }
+        
+        Write-Log "Recherche de groupes avec terme: '$searchTerm'" -Level Debug
+        
+        # CORRECTION : Recherche simplifiée et robuste
+        try {
+            # Test de connexion AD d'abord
+            $null = Get-ADDomain -ErrorAction Stop
+            
+            # Recherche avec filtre simple
+            $groups = Get-ADGroup -Filter "Name -like '*$searchTerm*'" -Properties Name, Description, GroupScope, GroupCategory -ErrorAction Stop |
+                     Sort-Object Name |
+                     Select-Object -First 100
+            
+            if (-not $groups -or $groups.Count -eq 0) {
+                Show-InfoMessage "Aucun groupe trouvé avec le terme '$searchTerm'."
+                return
+            }
+            
+            Write-Log "Trouvé $($groups.Count) groupes" -Level Debug
+            
+        } catch [Microsoft.ActiveDirectory.Management.ADServerDownException] {
+            Show-ErrorMessage "Serveur AD inaccessible" "Impossible de contacter le serveur Active Directory. Vérifiez votre connexion réseau."
+            return
+        } catch [Microsoft.ActiveDirectory.Management.ADException] {
+            Show-ErrorMessage "Erreur Active Directory" "Erreur lors de la recherche dans AD :`n$($_.Exception.Message)"
+            return
+        } catch {
+            Write-Log "Erreur lors de la recherche de groupes: $($_.Exception.Message)" -Level Error
+            Show-ErrorMessage "Erreur de recherche" "Impossible de rechercher les groupes :`n$($_.Exception.Message)"
+            return
+        }
+        
+        # Interface de sélection des groupes
+        $groupSelectionForm = New-Object System.Windows.Forms.Form -Property @{
+            Text = "Sélectionner un groupe - $($groups.Count) résultat(s)"
+            Size = [System.Drawing.Size]::new(600, 450)
+            StartPosition = "CenterParent"
+            FormBorderStyle = 'FixedDialog'
+            MaximizeBox = $false
+            MinimizeBox = $false
+            BackColor = $script:Theme.Background
+        }
+        
+        # En-tête
+        $lblHeader = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Recherche : '$searchTerm' - $($groups.Count) groupe(s) trouvé(s)"
+            Location = [System.Drawing.Point]::new(20, 15)
+            Size = [System.Drawing.Size]::new(550, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Primary
+            TextAlign = 'MiddleCenter'
+        }
+        
+        # Liste des groupes
+        $lbGroups = New-Object System.Windows.Forms.ListBox -Property @{
+            Location = [System.Drawing.Point]::new(20, 50)
+            Size = [System.Drawing.Size]::new(550, 300)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+        }
+        
+        # Remplissage de la liste
+        foreach ($group in $groups) {
+            $displayText = $group.Name
+            if ($group.Description) {
+                $displayText += " - $($group.Description)"
+            }
+            $displayText += " [$($group.GroupCategory)/$($group.GroupScope)]"
+            
+            $lbGroups.Items.Add($displayText)
+            # Stocker le nom du groupe dans la propriété Tag (simulation)
+            $lbGroups.Tag = if ($lbGroups.Tag) { $lbGroups.Tag + ";" + $group.Name } else { $group.Name }
+        }
+        
+        # Boutons
+        $btnSelect = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Ajouter au groupe sélectionné"
+            Location = [System.Drawing.Point]::new(350, 370)
+            Size = [System.Drawing.Size]::new(150, 30)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Enabled = $false
+        }
+        
+        $btnCancel = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Annuler"
+            Location = [System.Drawing.Point]::new(510, 370)
+            Size = [System.Drawing.Size]::new(60, 30)
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+        }
+        
+        # Événements
+        $lbGroups.Add_SelectedIndexChanged({
+            $btnSelect.Enabled = ($lbGroups.SelectedIndex -ge 0)
+        })
+        
+        $lbGroups.Add_DoubleClick({
+            if ($lbGroups.SelectedIndex -ge 0) {
+                $btnSelect.PerformClick()
+            }
+        })
+        
+        $btnSelect.Add_Click({
+            if ($lbGroups.SelectedIndex -ge 0) {
+                # Récupérer le nom du groupe sélectionné
+                $groupNames = $lbGroups.Tag -split ";"
+                $selectedGroupName = $groupNames[$lbGroups.SelectedIndex]
+                
+                try {
+                    Add-UserToSelectedGroup $selectedGroupName
+                    $groupSelectionForm.Close()
+                } catch {
+                    Show-ErrorMessage "Erreur lors de l'ajout au groupe" $_.Exception.Message
+                }
+            }
+        })
+        
+        $btnCancel.Add_Click({
+            $groupSelectionForm.Close()
+        })
+        
+        $groupSelectionForm.Controls.AddRange(@($lblHeader, $lbGroups, $btnSelect, $btnCancel))
+        $groupSelectionForm.ShowDialog()
+        
+    } catch {
+        Write-Log "Erreur critique lors de la recherche de groupes: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur critique" "Erreur inattendue lors de la recherche de groupes :`n$($_.Exception.Message)"
+    }
+}

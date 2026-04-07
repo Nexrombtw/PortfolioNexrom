@@ -1,0 +1,199 @@
+Voici les parties exactes à modifier dans le script fourni pour supprimer les références à $script:Config.BaseOU :
+
+1. Configuration à modifier
+Supprimer BaseOU de la configuration :
+
+powershell
+# REMPLACER
+$script:Config = @{
+    BaseOU = $null
+    SettingsPath = Join-Path $env:APPDATA "InfoADScriptSettings.json"
+    LogPath = Join-Path $env:TEMP "ADUserManagement.log"
+    MaxRetries = 3
+    TimeoutSeconds = 30
+}
+
+# PAR
+$script:Config = @{
+    SettingsPath = Join-Path $env:APPDATA "InfoADScriptSettings.json"
+    LogPath = Join-Path $env:TEMP "ADUserManagement.log"
+    MaxRetries = 3
+    TimeoutSeconds = 30
+}
+
+
+
+
+
+2. Fonction à ajouter
+Ajouter cette nouvelle fonction :
+
+powershell
+function Get-DomainDN {
+    try {
+        $domain = Get-ADDomain -ErrorAction Stop
+        return $domain.DistinguishedName
+    } catch {
+        Write-Log "Erreur lors de la récupération du domaine: $($_.Exception.Message)" -Level Error
+        throw "Impossible de récupérer les informations du domaine"
+    }
+}
+
+
+
+
+
+
+3. Fonction à supprimer complètement
+Supprimer entièrement :
+
+powershell
+function Initialize-DomainConfiguration {
+    # SUPPRIMER TOUTE CETTE FONCTION
+}
+
+
+
+
+
+
+
+
+4. Test-ADConnection à simplifier
+Remplacer par :
+
+powershell
+function Test-ADConnection {
+    param([int]$MaxRetries = $script:Config.MaxRetries)
+    
+    for ($i = 1; $i -le $MaxRetries; $i++) {
+        try {
+            $domain = Get-ADDomain -ErrorAction Stop
+            Write-Log "Connexion AD réussie au domaine: $($domain.DNSRoot)" -Level Info
+            return $true
+        } catch {
+            Write-Log "Tentative $i/$MaxRetries - Erreur de connexion AD: $($_.Exception.Message)" -Level Warning
+            if ($i -lt $MaxRetries) {
+                Start-Sleep -Seconds 2
+            }
+        }
+    }
+    return $false
+}
+
+
+
+
+
+
+
+5. Load-Cities à modifier
+Remplacer :
+
+powershell
+# REMPLACER
+$root = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$($script:Config.BaseOU)")
+$searcher.SearchScope = [System.DirectoryServices.SearchScope]::OneLevel
+
+# PAR
+$domainDN = Get-DomainDN
+$root = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$domainDN")
+$searcher.SearchScope = [System.DirectoryServices.SearchScope]::Subtree
+
+
+
+
+6. Refresh-Users à modifier
+Remplacer :
+
+powershell
+# REMPLACER
+$searchBase = "OU=$selectedCity,$($script:Config.BaseOU)"
+
+# PAR
+$domainDN = Get-DomainDN
+$searchBase = "OU=$selectedCity,$domainDN"
+
+
+
+
+7. Load-ComputersWithoutSerial à modifier
+Supprimer ce bloc :
+
+powershell
+# SUPPRIMER ENTIÈREMENT
+if ([string]::IsNullOrWhiteSpace($script:Config.BaseOU)) {
+    $script:UIControls.lbComputers.Items.Add("Configuration AD en cours...")
+    # ... tout le bloc de vérification
+}
+Et remplacer :
+
+powershell
+# REMPLACER
+$searchBase = "OU=$selectedCity,$($script:Config.BaseOU)"
+
+# PAR
+$domainDN = Get-DomainDN
+$searchBase = "OU=$selectedCity,$domainDN"
+
+
+
+
+8. Get-UserCityFromDN à modifier
+Remplacer :
+
+powershell
+# REMPLACER
+if ($DistinguishedName -match "OU=([^,]+),OU=FR,DC=") {
+$root = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$($script:Config.BaseOU)")
+$searcher.SearchScope = [System.DirectoryServices.SearchScope]::OneLevel
+
+# PAR
+$domainDN = Get-DomainDN
+if ($DistinguishedName -match "OU=([^,]+),$([regex]::Escape($domainDN))") {
+$root = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$domainDN")
+$searcher.SearchScope = [System.DirectoryServices.SearchScope]::Subtree
+
+
+
+
+
+
+
+9. Disable-UserAccount à modifier
+Remplacer :
+
+powershell
+# REMPLACER
+$disabledOUPath = "OU=Disable Users,OU=Others,OU=$userCity,OU=FR,DC=Marche,DC=lan"
+
+# PAR
+$domainDN = Get-DomainDN
+$disabledOUPath = "OU=Disable Users,OU=Others,OU=$userCity,$domainDN"
+
+
+
+10. Load-AvailableCitiesForMove à modifier
+Remplacer :
+
+powershell
+# REMPLACER
+$root = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$($script:Config.BaseOU)")
+$searcher.SearchScope = [System.DirectoryServices.SearchScope]::OneLevel
+
+# PAR
+$domainDN = Get-DomainDN
+$root = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$domainDN")
+$searcher.SearchScope = [System.DirectoryServices.SearchScope]::Subtree
+
+
+11. Load-UniformCityFolders à modifier
+Remplacer :
+
+powershell
+# REMPLACER
+$cityBasePath = "OU=$SelectedCity,$($script:Config.BaseOU)"
+
+# PAR
+$domainDN = Get-DomainDN
+$cityBasePath = "OU=$SelectedCity,$domainDN"

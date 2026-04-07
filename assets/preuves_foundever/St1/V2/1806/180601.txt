@@ -1,0 +1,568 @@
+function Show-BulkUserManagement {
+    try {
+        # Récupération de la ville sélectionnée
+        $selectedCity = ""
+        if ($script:UIControls.cbCity.SelectedItem) {
+            $selectedCityRaw = $script:UIControls.cbCity.SelectedItem.ToString()
+            $selectedCity = $selectedCityRaw -replace "⭐ ", ""
+        }
+        
+        $windowTitle = if (-not [string]::IsNullOrWhiteSpace($selectedCity)) {
+            "Gestion en lot d'utilisateurs - $selectedCity"
+        } else {
+            "Gestion en lot d'utilisateurs - Toutes villes"
+        }
+        
+        # Fenêtre principale
+        $bulkForm = New-Object System.Windows.Forms.Form -Property @{
+            Text = $windowTitle
+            Size = [System.Drawing.Size]::new(1200, 800)
+            StartPosition = "CenterParent"
+            FormBorderStyle = 'FixedDialog'
+            MaximizeBox = $false
+            MinimizeBox = $false
+            BackColor = $script:Theme.Background
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+        }
+        
+        # En-tête avec couleurs neutres
+        $headerPanel = New-Object System.Windows.Forms.Panel -Property @{
+            Location = [System.Drawing.Point]::new(15, 15)
+            Size = [System.Drawing.Size]::new(1160, 100)
+            BackColor = $script:Theme.Primary
+            BorderStyle = 'None'
+        }
+        
+        $lblTitle = New-Object System.Windows.Forms.Label -Property @{
+            Text = "GESTION EN LOT D'UTILISATEURS"
+            Location = [System.Drawing.Point]::new(20, 15)
+            Size = [System.Drawing.Size]::new(1120, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 14, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.White
+            TextAlign = 'MiddleCenter'
+        }
+        
+        $lblSubtitle = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Gestion de groupes et désactivation de comptes pour plusieurs utilisateurs"
+            Location = [System.Drawing.Point]::new(20, 45)
+            Size = [System.Drawing.Size]::new(1120, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 10)
+            ForeColor = $script:Theme.White
+            TextAlign = 'MiddleCenter'
+        }
+        
+        # Indicateur de ville en blanc (plus de jaune)
+        $cityIndicator = if (-not [string]::IsNullOrWhiteSpace($selectedCity)) {
+            "Ville sélectionnée : $selectedCity"
+        } else {
+            "Recherche dans toutes les villes"
+        }
+        
+        $lblCityInfo = New-Object System.Windows.Forms.Label -Property @{
+            Text = $cityIndicator
+            Location = [System.Drawing.Point]::new(20, 70)
+            Size = [System.Drawing.Size]::new(1120, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.White
+            TextAlign = 'MiddleCenter'
+        }
+        
+        $headerPanel.Controls.AddRange(@($lblTitle, $lblSubtitle, $lblCityInfo))
+        
+        # Section sélection d'utilisateurs
+        $userPanel = New-Object System.Windows.Forms.Panel -Property @{
+            Location = [System.Drawing.Point]::new(15, 125)
+            Size = [System.Drawing.Size]::new(570, 380)
+            BackColor = $script:Theme.Light
+            BorderStyle = 'FixedSingle'
+        }
+        
+        $lblUserTitle = New-Object System.Windows.Forms.Label -Property @{
+            Text = "SÉLECTION D'UTILISATEURS"
+            Location = [System.Drawing.Point]::new(15, 15)
+            Size = [System.Drawing.Size]::new(540, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Primary
+            TextAlign = 'MiddleCenter'
+        }
+        
+        # Recherche d'utilisateurs
+        $lblUserSearch = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Rechercher :"
+            Location = [System.Drawing.Point]::new(15, 45)
+            Size = [System.Drawing.Size]::new(80, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Text
+            TextAlign = 'MiddleRight'
+        }
+        
+        $txtUserSearch = New-Object System.Windows.Forms.TextBox -Property @{
+            Location = [System.Drawing.Point]::new(105, 43)
+            Size = [System.Drawing.Size]::new(200, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            BackColor = $script:Theme.White
+        }
+        
+        $btnSearchUsers = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Rechercher"
+            Location = [System.Drawing.Point]::new(315, 42)
+            Size = [System.Drawing.Size]::new(100, 27)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+        }
+        
+        $btnSelectAll = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Tout sélectionner"
+            Location = [System.Drawing.Point]::new(425, 42)
+            Size = [System.Drawing.Size]::new(120, 27)
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 8)
+        }
+        
+        # MODIFIÉ : Liste des utilisateurs avec cases à cocher ET coloration personnalisée
+        $lbUsers = New-Object System.Windows.Forms.CheckedListBox -Property @{
+            Location = [System.Drawing.Point]::new(15, 80)
+            Size = [System.Drawing.Size]::new(540, 260)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            BackColor = $script:Theme.White
+            CheckOnClick = $true
+            DrawMode = [System.Windows.Forms.DrawMode]::OwnerDrawFixed
+            ItemHeight = 20  # Hauteur fixe pour un meilleur rendu
+        }
+
+        # NOUVEAU : Événement de dessin personnalisé pour la coloration BLEUE
+        $lbUsers.Add_DrawItem({
+            param($sender, $e)
+            
+            try {
+                # Vérifier si l'élément est valide
+                if ($e.Index -lt 0 -or $e.Index -ge $sender.Items.Count) {
+                    return
+                }
+                
+                # Déterminer si l'élément est coché
+                $isChecked = $sender.GetItemChecked($e.Index)
+                
+                # Couleurs selon l'état - BLEU pour les sélectionnés
+                $backColor = if ($isChecked) {
+                    [System.Drawing.Color]::FromArgb(173, 216, 230)  # Bleu clair pour les cochés
+                } else {
+                    [System.Drawing.Color]::White  # Blanc pour les non-cochés
+                }
+                
+                $textColor = if ($isChecked) {
+                    [System.Drawing.Color]::FromArgb(0, 0, 139)  # Bleu foncé pour le texte des cochés
+                } else {
+                    [System.Drawing.Color]::Black  # Noir pour le texte des non-cochés
+                }
+                
+                # Dessiner l'arrière-plan
+                $brush = New-Object System.Drawing.SolidBrush($backColor)
+                $e.Graphics.FillRectangle($brush, $e.Bounds)
+                $brush.Dispose()
+                
+                # Dessiner le texte de l'élément
+                $itemText = $sender.Items[$e.Index].ToString()
+                $textBrush = New-Object System.Drawing.SolidBrush($textColor)
+                
+                # Police en gras pour les éléments cochés
+                $font = if ($isChecked) {
+                    New-Object System.Drawing.Font($e.Font.FontFamily, $e.Font.Size, [System.Drawing.FontStyle]::Bold)
+                } else {
+                    $e.Font
+                }
+                
+                # Position du texte (décalée pour laisser place à la case à cocher)
+                $textRect = New-Object System.Drawing.Rectangle(
+                    ($e.Bounds.X + 20), 
+                    $e.Bounds.Y, 
+                    ($e.Bounds.Width - 20), 
+                    $e.Bounds.Height
+                )
+                
+                # Format du texte
+                $stringFormat = New-Object System.Drawing.StringFormat
+                $stringFormat.LineAlignment = [System.Drawing.StringAlignment]::Center
+                $stringFormat.Alignment = [System.Drawing.StringAlignment]::Near
+                
+                # Dessiner le texte
+                $e.Graphics.DrawString($itemText, $font, $textBrush, $textRect, $stringFormat)
+                
+                # Dessiner le rectangle de focus si nécessaire
+                if (($e.State -band [System.Windows.Forms.DrawItemState]::Focus) -eq [System.Windows.Forms.DrawItemState]::Focus) {
+                    $focusPen = New-Object System.Drawing.Pen([System.Drawing.Color]::Blue, 1)
+                    $focusRect = New-Object System.Drawing.Rectangle(
+                        $e.Bounds.X, $e.Bounds.Y, 
+                        ($e.Bounds.Width - 1), ($e.Bounds.Height - 1)
+                    )
+                    $e.Graphics.DrawRectangle($focusPen, $focusRect)
+                    $focusPen.Dispose()
+                }
+                
+                # Nettoyer les ressources
+                $textBrush.Dispose()
+                $stringFormat.Dispose()
+                if ($isChecked -and $font -ne $e.Font) {
+                    $font.Dispose()
+                }
+                
+            } catch {
+                # En cas d'erreur, dessiner normalement
+                $e.DrawBackground()
+                $e.DrawFocusRectangle()
+            }
+        })
+        
+        $lblUserCount = New-Object System.Windows.Forms.Label -Property @{
+            Text = "0 utilisateur(s) sélectionné(s)"
+            Location = [System.Drawing.Point]::new(15, 350)
+            Size = [System.Drawing.Size]::new(540, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Italic)
+            ForeColor = $script:Theme.Text
+            TextAlign = 'MiddleCenter'
+        }
+        
+        $userPanel.Controls.AddRange(@($lblUserTitle, $lblUserSearch, $txtUserSearch, $btnSearchUsers, $btnSelectAll, $lbUsers, $lblUserCount))
+        
+        # Section gestion des groupes et actions
+        $groupPanel = New-Object System.Windows.Forms.Panel -Property @{
+            Location = [System.Drawing.Point]::new(605, 125)
+            Size = [System.Drawing.Size]::new(570, 380)
+            BackColor = $script:Theme.Light
+            BorderStyle = 'FixedSingle'
+        }
+        
+        $lblGroupTitle = New-Object System.Windows.Forms.Label -Property @{
+            Text = "GESTION DES GROUPES ET ACTIONS"
+            Location = [System.Drawing.Point]::new(15, 15)
+            Size = [System.Drawing.Size]::new(540, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Primary
+            TextAlign = 'MiddleCenter'
+        }
+        
+        # Recherche de groupes
+        $lblGroupSearch = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Rechercher groupe :"
+            Location = [System.Drawing.Point]::new(15, 45)
+            Size = [System.Drawing.Size]::new(120, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Text
+            TextAlign = 'MiddleRight'
+        }
+        
+        $txtGroupSearch = New-Object System.Windows.Forms.TextBox -Property @{
+            Location = [System.Drawing.Point]::new(145, 43)
+            Size = [System.Drawing.Size]::new(200, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            BackColor = $script:Theme.White
+        }
+        
+        $btnSearchGroups = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Rechercher"
+            Location = [System.Drawing.Point]::new(355, 42)
+            Size = [System.Drawing.Size]::new(100, 27)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+        }
+        
+        # Liste des groupes trouvés
+        $lbGroups = New-Object System.Windows.Forms.ListBox -Property @{
+            Location = [System.Drawing.Point]::new(15, 80)
+            Size = [System.Drawing.Size]::new(540, 140)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            BackColor = $script:Theme.White
+            SelectionMode = 'One'
+        }
+        
+        $lblGroupSelected = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Groupe sélectionné : Aucun"
+            Location = [System.Drawing.Point]::new(15, 230)
+            Size = [System.Drawing.Size]::new(540, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Primary
+        }
+        
+        # Boutons avec couleurs neutres
+        $btnAddToGroup = New-Object System.Windows.Forms.Button -Property @{
+            Text = "AJOUTER AU GROUPE"
+            Location = [System.Drawing.Point]::new(15, 260)
+            Size = [System.Drawing.Size]::new(170, 30)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            Enabled = $false
+        }
+        
+        $btnRemoveFromGroup = New-Object System.Windows.Forms.Button -Property @{
+            Text = "RETIRER DU GROUPE"
+            Location = [System.Drawing.Point]::new(195, 260)
+            Size = [System.Drawing.Size]::new(170, 30)
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            Enabled = $false
+        }
+        
+        # NOUVEAU : Bouton de désactivation en lot - BIEN VISIBLE
+        $btnDisableAccounts = New-Object System.Windows.Forms.Button -Property @{
+            Text = "🚫 DÉSACTIVER COMPTES"
+            Location = [System.Drawing.Point]::new(375, 260)
+            Size = [System.Drawing.Size]::new(170, 35)
+            BackColor = [System.Drawing.Color]::FromArgb(220, 53, 69)  # Rouge pour bien le distinguer
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            Enabled = $false
+            Cursor = [System.Windows.Forms.Cursors]::Hand
+        }
+        
+        # Bordure pour le rendre encore plus visible
+        $btnDisableAccounts.FlatAppearance.BorderSize = 2
+        $btnDisableAccounts.FlatAppearance.BorderColor = [System.Drawing.Color]::DarkRed
+        
+        # Séparateur
+        $separator = New-Object System.Windows.Forms.Label -Property @{
+            Location = [System.Drawing.Point]::new(15, 305)
+            Size = [System.Drawing.Size]::new(540, 2)
+            BackColor = $script:Theme.Primary
+        }
+        
+        # Instructions clarifiées
+        $lblInstructions = New-Object System.Windows.Forms.Label -Property @{
+            Text = "• Sélectionnez des utilisateurs et un groupe pour les actions de groupe`n• Sélectionnez uniquement des utilisateurs pour la DÉSACTIVATION EN LOT`n• Le bouton rouge permet de désactiver plusieurs comptes simultanément`n• Les utilisateurs sélectionnés apparaissent en BLEU"
+            Location = [System.Drawing.Point]::new(15, 315)
+            Size = [System.Drawing.Size]::new(540, 60)
+            Font = [System.Drawing.Font]::new("Segoe UI", 8, [System.Drawing.FontStyle]::Italic)
+            ForeColor = $script:Theme.Text
+        }
+        
+        $groupPanel.Controls.AddRange(@($lblGroupTitle, $lblGroupSearch, $txtGroupSearch, $btnSearchGroups, $lbGroups, $lblGroupSelected, $btnAddToGroup, $btnRemoveFromGroup, $btnDisableAccounts, $separator, $lblInstructions))
+        
+        # Panel de résultats réduit
+        $resultPanel = New-Object System.Windows.Forms.Panel -Property @{
+            Location = [System.Drawing.Point]::new(15, 515)
+            Size = [System.Drawing.Size]::new(1160, 120)
+            BackColor = $script:Theme.White
+            BorderStyle = 'FixedSingle'
+        }
+        
+        $lblResultTitle = New-Object System.Windows.Forms.Label -Property @{
+            Text = "RÉSULTATS DES OPÉRATIONS"
+            Location = [System.Drawing.Point]::new(15, 10)
+            Size = [System.Drawing.Size]::new(1130, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Primary
+            TextAlign = 'MiddleCenter'
+        }
+        
+        $txtResults = New-Object System.Windows.Forms.TextBox -Property @{
+            Location = [System.Drawing.Point]::new(15, 35)
+            Size = [System.Drawing.Size]::new(1130, 60)
+            Font = [System.Drawing.Font]::new("Consolas", 8)
+            BackColor = $script:Theme.Light
+            ForeColor = $script:Theme.Text
+            Multiline = $true
+            ScrollBars = 'Vertical'
+            ReadOnly = $true
+            Text = "Aucune opération effectuée"
+        }
+        
+        $btnClearResults = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Effacer"
+            Location = [System.Drawing.Point]::new(15, 100)
+            Size = [System.Drawing.Size]::new(80, 20)
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 8)
+        }
+        
+        $btnClose = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Fermer"
+            Location = [System.Drawing.Point]::new(1065, 100)
+            Size = [System.Drawing.Size]::new(80, 20)
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 8)
+        }
+        
+        $resultPanel.Controls.AddRange(@($lblResultTitle, $txtResults, $btnClearResults, $btnClose))
+        
+        # ÉVÉNEMENTS avec rafraîchissement visuel
+        $btnSearchUsers.Add_Click({
+            try {
+                Search-BulkUsers $txtUserSearch.Text.Trim() $lbUsers $lblUserCount
+            } catch {
+                Show-ErrorMessage "Erreur de recherche" $_.Exception.Message
+            }
+        })
+        
+        $txtUserSearch.Add_KeyDown({
+            if ($_.KeyCode -eq 'Enter') {
+                try {
+                    Search-BulkUsers $txtUserSearch.Text.Trim() $lbUsers $lblUserCount
+                } catch {
+                    Show-ErrorMessage "Erreur de recherche" $_.Exception.Message
+                }
+            }
+        })
+        
+        # MODIFIÉ : Bouton "Tout sélectionner" avec rafraîchissement visuel
+        $btnSelectAll.Add_Click({
+            try {
+                for ($i = 0; $i -lt $lbUsers.Items.Count; $i++) {
+                    $lbUsers.SetItemChecked($i, $true)
+                }
+                Update-UserSelectionCount $lbUsers $lblUserCount
+                $btnDisableAccounts.Enabled = ($lbUsers.CheckedItems.Count -gt 0)
+                
+                # NOUVEAU : Forcer le rafraîchissement visuel
+                $lbUsers.Invalidate()
+                
+                if ($lbUsers.CheckedItems.Count -gt 0) {
+                    $btnDisableAccounts.BackColor = [System.Drawing.Color]::FromArgb(220, 53, 69)
+                    $btnDisableAccounts.Text = "🚫 DÉSACTIVER $($lbUsers.CheckedItems.Count) COMPTE(S)"
+                }
+            } catch {
+                Show-ErrorMessage "Erreur de sélection" $_.Exception.Message
+            }
+        })
+        
+        # MODIFIÉ : Événement ItemCheck avec rafraîchissement visuel
+        $lbUsers.Add_ItemCheck({
+            try {
+                $timer = New-Object System.Windows.Forms.Timer
+                $timer.Interval = 50
+                $timer.Add_Tick({
+                    try {
+                        Update-UserSelectionCount $lbUsers $lblUserCount
+                        $hasUsers = ($lbUsers.CheckedItems.Count -gt 0)
+                        $hasGroup = ($lbGroups.SelectedItem -ne $null)
+                        
+                        $btnAddToGroup.Enabled = ($hasUsers -and $hasGroup)
+                        $btnRemoveFromGroup.Enabled = ($hasUsers -and $hasGroup)
+                        $btnDisableAccounts.Enabled = $hasUsers
+                        
+                        if ($hasUsers) {
+                            $btnDisableAccounts.BackColor = [System.Drawing.Color]::FromArgb(220, 53, 69)
+                            $btnDisableAccounts.Text = "🚫 DÉSACTIVER $($lbUsers.CheckedItems.Count) COMPTE(S)"
+                        } else {
+                            $btnDisableAccounts.BackColor = [System.Drawing.Color]::Gray
+                            $btnDisableAccounts.Text = "🚫 DÉSACTIVER COMPTES"
+                        }
+                        
+                        # NOUVEAU : Forcer le rafraîchissement visuel
+                        $lbUsers.Invalidate()
+                        
+                        $timer.Stop()
+                        $timer.Dispose()
+                    } catch {
+                        # Ignore timer errors
+                    }
+                })
+                $timer.Start()
+            } catch {
+                # Ignore event errors
+            }
+        })
+        
+        $btnSearchGroups.Add_Click({
+            try {
+                Search-BulkGroups $txtGroupSearch.Text.Trim() $lbGroups
+            } catch {
+                Show-ErrorMessage "Erreur de recherche de groupes" $_.Exception.Message
+            }
+        })
+        
+        $txtGroupSearch.Add_KeyDown({
+            if ($_.KeyCode -eq 'Enter') {
+                try {
+                    Search-BulkGroups $txtGroupSearch.Text.Trim() $lbGroups
+                } catch {
+                    Show-ErrorMessage "Erreur de recherche de groupes" $_.Exception.Message
+                }
+            }
+        })
+        
+        $lbGroups.Add_SelectedIndexChanged({
+            try {
+                if ($lbGroups.SelectedItem) {
+                    $selectedGroup = $lbGroups.SelectedItem.ToString()
+                    if ($selectedGroup -match '^([^-]+)') {
+                        $groupName = $matches[1].Trim()
+                        $lblGroupSelected.Text = "Groupe sélectionné : $groupName"
+                        $btnAddToGroup.Enabled = ($lbUsers.CheckedItems.Count -gt 0)
+                        $btnRemoveFromGroup.Enabled = ($lbUsers.CheckedItems.Count -gt 0)
+                    }
+                } else {
+                    $lblGroupSelected.Text = "Groupe sélectionné : Aucun"
+                    $btnAddToGroup.Enabled = $false
+                    $btnRemoveFromGroup.Enabled = $false
+                }
+            } catch {
+                # Ignore selection errors
+            }
+        })
+        
+        $btnAddToGroup.Add_Click({
+            try {
+                Execute-BulkGroupOperation $lbUsers $lbGroups $txtResults "add"
+            } catch {
+                Show-ErrorMessage "Erreur d'ajout" $_.Exception.Message
+            }
+        })
+        
+        $btnRemoveFromGroup.Add_Click({
+            try {
+                Execute-BulkGroupOperation $lbUsers $lbGroups $txtResults "remove"
+            } catch {
+                Show-ErrorMessage "Erreur de suppression" $_.Exception.Message
+            }
+        })
+        
+        # Événement pour la désactivation en lot
+        $btnDisableAccounts.Add_Click({
+            try {
+                Execute-BulkAccountDisable $lbUsers $txtResults
+            } catch {
+                Show-ErrorMessage "Erreur de désactivation" $_.Exception.Message
+            }
+        })
+        
+        $btnClearResults.Add_Click({
+            try {
+                $txtResults.Text = "Résultats effacés - $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')"
+            } catch {
+                # Ignore clear errors
+            }
+        })
+        
+        $btnClose.Add_Click({
+            try {
+                $bulkForm.Close()
+            } catch {
+                # Ignore close errors
+            }
+        })
+        
+        # Ajout des contrôles au formulaire
+        $bulkForm.Controls.AddRange(@($headerPanel, $userPanel, $groupPanel, $resultPanel))
+        
+        # Affichage du formulaire
+        $null = $bulkForm.ShowDialog()
+        
+    } catch {
+        Write-Log "Erreur lors de l'affichage de la gestion en lot: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur" "Impossible d'afficher la fenêtre de gestion en lot: $($_.Exception.Message)"
+    }
+}

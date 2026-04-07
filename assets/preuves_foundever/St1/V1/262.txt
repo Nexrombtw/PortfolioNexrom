@@ -1,0 +1,99 @@
+function Refresh-Users {
+    try {
+        $script:UIControls.lbUsers.Items.Clear()
+        Clear-UserDetails
+
+        if (-not $script:UIControls.cbCity.SelectedItem) {
+            Write-Log "Aucune ville sélectionnée" -Level Warning
+            return
+        }
+
+        $selectedCity = $script:UIControls.cbCity.SelectedItem.ToString()
+        $searchTerm = Get-SafeInput $script:UIControls.txtSearch.Text "Search"
+        $searchBase = "OU=$selectedCity,$($script:Config.BaseOU)"
+
+        # Si le champ de recherche est vide, on ne fait rien (on garde la liste vide !)
+        if ([string]::IsNullOrWhiteSpace($searchTerm)) {
+            Write-Log "Champ de recherche vide : pas d'affichage d'utilisateurs" -Level Info
+            return
+        }
+
+        # Vérification de l'existence de l'OU
+        try {
+            $null = Get-ADOrganizationalUnit -Identity $searchBase -ErrorAction Stop
+        } catch {
+            Show-ErrorMessage "OU introuvable" "L'unité organisationnelle '$searchBase' n'existe pas."
+            return
+        }
+
+        # Construction du filtre LDAP
+        $filter = "(&(objectCategory=person)(objectClass=user)(!userAccountControl:1.2.840.113556.1.4.803:=2)(|(name=*$searchTerm*)(sn=*$searchTerm*)(givenName=*$searchTerm*)(samAccountName=*$searchTerm*)(mail=*$searchTerm*)))"
+
+        Write-Log "Recherche dans $searchBase avec filtre: $filter" -Level Debug
+
+        $users = Get-ADUser -SearchBase $searchBase -LDAPFilter $filter -Properties Name, SamAccountName, Enabled, Department |
+                 Where-Object { $_.Enabled -eq $true } |
+                 Sort-Object Name |
+                 Select-Object -First 500
+
+        foreach ($user in $users) {
+            $displayName = "$($user.Name) [$($user.SamAccountName)]"
+            if ($user.Department) {
+                $displayName += " - $($user.Department)"
+            }
+            $script:UIControls.lbUsers.Items.Add($displayName)
+        }
+
+        Write-Log "Trouvé $($users.Count) utilisateurs correspondant à '$searchTerm'" -Level Info
+
+        if ($users.Count -eq 0) {
+            Show-InfoMessage "Aucun utilisateur trouvé avec les critères de recherche spécifiés."
+        }
+
+    } catch {
+        Write-Log "Erreur lors de la recherche d'utilisateurs: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur de recherche" "Impossible de rechercher les utilisateurs: $($_.Exception.Message)"
+    }
+}
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Bouton "Effacer"
+$btnClear.Add_Click({
+    try {
+        $script:UIControls.txtSearch.Text = ""
+        $script:UIControls.lbUsers.Items.Clear()
+        Clear-UserDetails
+        Write-Log "Recherche effacée" -Level Info
+    } catch { 
+        Show-ErrorMessage "Erreur lors de l'effacement" $_.Exception.Message 
+    }
+})
+
+# Changement de ville
+$script:UIControls.cbCity.Add_SelectedIndexChanged({
+    try { 
+        $script:UIControls.txtSearch.Text = ""
+        $script:UIControls.lbUsers.Items.Clear()
+        Clear-UserDetails
+        Write-Log "Changement de ville - liste vidée" -Level Info
+    }
+    catch { Show-ErrorMessage "Erreur lors du changement de ville" $_.Exception.Message }
+})

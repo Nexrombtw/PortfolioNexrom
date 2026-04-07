@@ -1,0 +1,42 @@
+# **AMÉLIORÉ** : Fonction récursive pour construire l'arbre avec noms complets
+function Add-TreeNodes {
+    param($parentNode, $parentDN)
+    
+    if ($ouDict.ContainsKey($parentDN)) {
+        foreach ($ou in ($ouDict[$parentDN] | Sort-Object Name)) {
+            # **NOUVEAU** : Exclure les dossiers Groups et Functions
+            if ($ou.Name -eq "Groups" -or $ou.Name -eq "Functions") {
+                Write-Log "Dossier exclu du TreeView: $($ou.Name)" -Level Debug
+                continue
+            }
+            
+            $displayName = switch ($ou.Name) {
+                "Administrative" { "Administrative - Personnel administratif" }
+                "Commercial" { "Commercial - Équipe commerciale" }
+                "Technique" { "Technique - Personnel technique" }
+                "Direction" { "Direction - Management" }
+                "RH" { "Ressources Humaines" }
+                "IT" { "Informatique - Service IT" }
+                "Others" { "Others - Autres utilisateurs" }
+                "Finance" { "Finance - Service financier" }
+                "Marketing" { "Marketing - Service marketing" }
+                "Support" { "Support - Service support" }
+                "Disable Users" { "Disable Users - Comptes désactivés" }
+                default { $ou.Name }
+            }
+            
+            $node = New-Object System.Windows.Forms.TreeNode($displayName)
+            $node.Tag = $ou.DistinguishedName
+            $node.Name = $ou.Name
+            
+            if ($parentNode) {
+                $parentNode.Nodes.Add($node)
+            } else {
+                $treeView.Nodes.Add($node)
+            }
+            
+            # Ajouter récursivement les enfants
+            Add-TreeNodes $node $ou.DistinguishedName
+        }
+    }
+}

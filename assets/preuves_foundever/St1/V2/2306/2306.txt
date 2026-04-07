@@ -1,0 +1,4494 @@
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+# FONCTION PRINCIPALE : Initialisation
+function Initialize-Application {
+    try {
+        Write-Log "=== DÉMARRAGE DE L'APPLICATION ===" -Level Info
+        Write-Log "Version PowerShell: $($PSVersionTable.PSVersion)" -Level Info
+        Write-Log "Utilisateur: $env:USERNAME" -Level Info
+        Write-Log "Ordinateur: $env:COMPUTERNAME" -Level Info
+        
+        #  Test de connexion avec initialisation automatique du domaine
+        if (-not (Test-ADConnection)) {
+            Show-ErrorMessage "Connexion AD impossible" "Impossible de se connecter à Active Directory. Vérifiez votre connexion réseau et vos permissions."
+            return $false
+        }
+        
+        if (-not (Initialize-MainForm)) { return $false }
+        if (-not (Initialize-SearchControls)) { return $false }
+        if (-not (Initialize-UserList)) { return $false }
+        if (-not (Initialize-ComputersPanel)) { return $false }  
+        if (-not (Initialize-DetailsPanel)) { return $false }
+        if (-not (Initialize-GroupsPanel)) { return $false }
+        
+        if (-not (Load-Cities)) { return $false }
+        
+        Write-Log "Application initialisée avec succès (avec détection automatique du domaine)" -Level Info
+        return $true
+        
+    } catch {
+        Write-Log "Erreur critique lors de l'initialisation: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur d'initialisation" "Impossible d'initialiser l'application: $($_.Exception.Message)"
+        return $false
+    }
+}
+
+# Création de l'interface avec taille fixe
+function Initialize-MainForm {
+    try {
+        $script:UIControls.Form = New-Object System.Windows.Forms.Form -Property @{
+            Text = "Gestion AD Utilisateurs - Foundever"
+            Size = [System.Drawing.Size]::new(1420, 700)
+            StartPosition = "CenterScreen"
+            BackColor = $script:Theme.Background
+            Font = [System.Drawing.Font]::new("Segoe UI", 10)
+            FormBorderStyle = 'FixedDialog'
+            MaximizeBox = $false
+            MinimizeBox = $true
+            Icon = [System.Drawing.SystemIcons]::Application
+        }
+        
+        $script:UIControls.Form.Add_FormClosing({
+            param($sender, $e)
+            Write-Log "Fermeture de l'application" -Level Info
+        })
+        
+        Write-Log "Formulaire principal initialisé" -Level Info
+        return $true
+    } catch {
+        Write-Log "Erreur lors de l'initialisation du formulaire: $($_.Exception.Message)" -Level Error
+        return $false
+    }
+}
+
+# Contrôles de recherche avec recherche obligatoire
+function Initialize-SearchControls {
+    try {
+        $grpSearch = New-Object System.Windows.Forms.GroupBox -Property @{
+            Text = "Recherche utilisateur"
+            Location = [System.Drawing.Point]::new(15, 10)
+            Size = [System.Drawing.Size]::new(1380, 85)
+            BackColor = $script:Theme.Background
+            ForeColor = $script:Theme.Primary
+            Anchor = 'Top,Left,Right'
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $lblCity = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Ville :"
+            Location = [System.Drawing.Point]::new(20, 35)
+            Size = [System.Drawing.Size]::new(50, 25)
+            TextAlign = 'MiddleRight'
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $script:UIControls.cbCity = New-Object System.Windows.Forms.ComboBox -Property @{
+            Location = [System.Drawing.Point]::new(80, 33)
+            Width = 130
+            DropDownStyle = 'DropDownList'
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            DrawMode = 'OwnerDrawFixed'
+        }
+        
+        # Événement pour dessiner l'étoile en jaune
+        $script:UIControls.cbCity.Add_DrawItem({
+            param($sender, $e)
+            
+            if ($e.Index -ge 0) {
+                $item = $sender.Items[$e.Index].ToString()
+                $e.DrawBackground()
+                
+                if ($item.StartsWith("⭐")) {
+                    $starBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::Gold)
+                    $textBrush = [System.Drawing.SolidBrush]::new($e.ForeColor)
+                    
+                    $e.Graphics.DrawString("⭐", $e.Font, $starBrush, $e.Bounds.Left + 2, $e.Bounds.Top + 2)
+                    $cityName = $item.Substring(2)
+                    $e.Graphics.DrawString($cityName, $e.Font, $textBrush, $e.Bounds.Left + 20, $e.Bounds.Top + 2)
+                    
+                    $starBrush.Dispose()
+                    $textBrush.Dispose()
+                } else {
+                    $textBrush = [System.Drawing.SolidBrush]::new($e.ForeColor)
+                    $e.Graphics.DrawString($item, $e.Font, $textBrush, $e.Bounds.Left + 2, $e.Bounds.Top + 2)
+                    $textBrush.Dispose()
+                }
+                
+                $e.DrawFocusRectangle()
+            }
+        })
+        
+        $btnFavori = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Favori"
+            Location = [System.Drawing.Point]::new(220, 32)
+            Width = 80
+            Height = 30
+            BackColor = $script:Theme.Secondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $lblSearch = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Rechercher :"
+            Location = [System.Drawing.Point]::new(320, 35)
+            Size = [System.Drawing.Size]::new(90, 25)
+            TextAlign = 'MiddleRight'
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $script:UIControls.txtSearch = New-Object System.Windows.Forms.TextBox -Property @{
+            Location = [System.Drawing.Point]::new(420, 33)
+            Width = 210
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        # Placeholder pour indiquer qu'une recherche est nécessaire
+        $script:UIControls.txtSearch.Add_Enter({
+            if ($script:UIControls.txtSearch.Text -eq "Saisir un terme de recherche...") {
+                $script:UIControls.txtSearch.Text = ""
+                $script:UIControls.txtSearch.ForeColor = $script:Theme.Text
+            }
+        })
+        
+        $script:UIControls.txtSearch.Add_Leave({
+            if ([string]::IsNullOrWhiteSpace($script:UIControls.txtSearch.Text)) {
+                $script:UIControls.txtSearch.Text = "Saisir un terme de recherche..."
+                $script:UIControls.txtSearch.ForeColor = [System.Drawing.Color]::Gray
+            }
+        })
+        
+        # Initialiser le placeholder
+        $script:UIControls.txtSearch.Text = "Saisir un terme de recherche..."
+        $script:UIControls.txtSearch.ForeColor = [System.Drawing.Color]::Gray
+        
+        $btnSearch = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Rechercher"
+            Location = [System.Drawing.Point]::new(640, 31)
+            Width = 100
+            Height = 32
+            BackColor = $script:Theme.Primary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $btnClear = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Effacer"
+            Location = [System.Drawing.Point]::new(750, 31)
+            Width = 80
+            Height = 32
+            BackColor = $script:Theme.Secondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        # Logo Foundever à droite
+        $script:UIControls.logoBox = New-Object System.Windows.Forms.PictureBox -Property @{
+            Location = [System.Drawing.Point]::new(860, 15)
+            Size = [System.Drawing.Size]::new(500, 55)
+            BackColor = $script:Theme.Background
+            SizeMode = 'Zoom'
+            Anchor = 'Top,Right'
+        }
+        
+        # Tentative de chargement du logo
+        $logoLocations = @(
+            ".\foundever_logo.png",
+            "$env:USERPROFILE\Pictures\foundever_logo.png",
+            "$env:USERPROFILE\Desktop\foundever_logo.png"
+        )
+        
+        $logoLoaded = $false
+        foreach ($logoPath in $logoLocations) {
+            if (Test-Path $logoPath) {
+                try {
+                    $logoImage = [System.Drawing.Image]::FromFile((Get-Item $logoPath))
+                    $script:UIControls.logoBox.Image = $logoImage
+                    $logoLoaded = $true
+                    Write-Log "Logo Foundever chargé depuis: $logoPath" -Level Info
+                    break
+                } catch {
+                    Write-Log "Erreur lors du chargement du logo depuis $logoPath : $($_.Exception.Message)" -Level Warning
+                }
+            }
+        }
+        
+        # Placeholder si pas de logo
+        if (-not $logoLoaded) {
+            $script:UIControls.logoBox.BackColor = [System.Drawing.Color]::White
+            $script:UIControls.logoBox.BorderStyle = 'FixedSingle'
+            
+            $logoLabel = New-Object System.Windows.Forms.Label -Property @{
+                Text = "FOUNDEVER"
+                Location = [System.Drawing.Point]::new(0, 0)
+                Size = [System.Drawing.Size]::new(500, 55)
+                TextAlign = 'MiddleCenter'
+                Font = [System.Drawing.Font]::new("Segoe UI", 16, [System.Drawing.FontStyle]::Bold)
+                ForeColor = [System.Drawing.Color]::FromArgb(0, 102, 204)
+                BackColor = [System.Drawing.Color]::Transparent
+            }
+            $script:UIControls.logoBox.Controls.Add($logoLabel)
+            Write-Log "Logo Foundever placeholder créé" -Level Warning
+        }
+        
+        $grpSearch.Controls.AddRange(@($lblCity, $script:UIControls.cbCity, $btnFavori, $lblSearch, $script:UIControls.txtSearch, $btnSearch, $btnClear, $script:UIControls.logoBox))
+        $script:UIControls.Form.Controls.Add($grpSearch)
+        
+        # Événements modifiés pour recherche obligatoire
+        $btnSearch.Add_Click({ 
+            try { 
+                # Vérifier qu'il y a un terme de recherche
+                $searchText = $script:UIControls.txtSearch.Text.Trim()
+                if ([string]::IsNullOrWhiteSpace($searchText) -or $searchText -eq "Saisir un terme de recherche...") {
+                    Show-InfoMessage "Veuillez saisir un terme de recherche pour afficher les utilisateurs."
+                    return
+                }
+                Refresh-Users 
+            } 
+            catch { Show-ErrorMessage "Erreur lors de la recherche" $_.Exception.Message }
+        })
+        
+        $btnClear.Add_Click({
+            try {
+                $script:UIControls.txtSearch.Text = "Saisir un terme de recherche..."
+                $script:UIControls.txtSearch.ForeColor = [System.Drawing.Color]::Gray
+                $script:UIControls.lbUsers.Items.Clear()
+                Clear-UserDetails
+                Write-Log "Recherche effacée - liste vidée" -Level Info
+            } catch { 
+                Show-ErrorMessage "Erreur lors de l'effacement" $_.Exception.Message 
+            }
+        })
+        
+        $script:UIControls.txtSearch.Add_KeyDown({
+            if ($_.KeyCode -eq 'Enter') {
+                try { 
+                    # Vérifier qu'il y a un terme de recherche
+                    $searchText = $script:UIControls.txtSearch.Text.Trim()
+                    if ([string]::IsNullOrWhiteSpace($searchText) -or $searchText -eq "Saisir un terme de recherche...") {
+                        Show-InfoMessage "Veuillez saisir un terme de recherche pour afficher les utilisateurs."
+                        return
+                    }
+                    Refresh-Users 
+                }
+                catch { Show-ErrorMessage "Erreur lors de la recherche" $_.Exception.Message }
+            }
+        })
+        
+        # MODIFIÉ : Mise à jour des ordinateurs lors du changement de ville
+        $script:UIControls.cbCity.Add_SelectedIndexChanged({
+            try { 
+                # Vider la liste des utilisateurs et des détails
+                $script:UIControls.lbUsers.Items.Clear()
+                Clear-UserDetails
+                
+                # NOUVEAU : Recharger automatiquement les ordinateurs selon la nouvelle ville
+                Load-ComputersWithoutSerial
+                
+                Write-Log "Changement de ville - listes mises à jour automatiquement" -Level Info
+            }
+            catch { Show-ErrorMessage "Erreur lors du changement de ville" $_.Exception.Message }
+        })
+        
+        $btnFavori.Add_Click({
+            try {
+                if ($script:UIControls.cbCity.SelectedItem) {
+                    Save-FavoriteCity $script:UIControls.cbCity.SelectedItem.ToString()
+                }
+            } catch { 
+                Write-Log "Erreur lors de la sauvegarde du favori: $($_.Exception.Message)" -Level Warning
+            }
+        })
+        
+        Write-Log "Contrôles de recherche avec recherche obligatoire initialisés" -Level Info
+        return $true
+    } catch {
+        Write-Log "Erreur lors de l'initialisation des contrôles de recherche: $($_.Exception.Message)" -Level Error
+        return $false
+    }
+}
+
+# Détection automatique de la structure AD
+function Initialize-DomainConfiguration {
+    try {
+        $domain = Get-ADDomain -ErrorAction Stop
+        $domainComponents = $domain.DistinguishedName
+        
+        # Recherche automatique du conteneur principal des villes
+        $rootSearcher = New-Object System.DirectoryServices.DirectorySearcher
+        $rootSearcher.SearchRoot = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$domainComponents")
+        $rootSearcher.Filter = "(objectCategory=organizationalUnit)"
+        $rootSearcher.SearchScope = [System.DirectoryServices.SearchScope]::Subtree
+        $rootSearcher.PropertiesToLoad.Add("distinguishedName") | Out-Null
+        
+        $allOUs = $rootSearcher.FindAll()
+        
+        # Chercher le conteneur qui contient le plus d'OUs de villes (logique heuristique)
+        $candidateContainers = @{}
+        
+        foreach ($ou in $allOUs) {
+            $dn = $ou.Properties["distinguishedname"][0]
+            # Exclure les conteneurs système
+            if ($dn -notmatch "CN=|OU=Domain Controllers|OU=Microsoft Exchange") {
+                $parentDN = ($dn -split ',', 2)[1]
+                if ($parentDN -and $parentDN -ne $domainComponents) {
+                    if (-not $candidateContainers.ContainsKey($parentDN)) {
+                        $candidateContainers[$parentDN] = 0
+                    }
+                    $candidateContainers[$parentDN]++
+                }
+            }
+        }
+        
+        # Sélectionner le conteneur avec le plus d'OUs (probablement le conteneur des villes)
+        $bestContainer = $candidateContainers.GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 1
+        
+        if ($bestContainer -and $bestContainer.Value -gt 1) {
+            $script:Config.BaseOU = $bestContainer.Key
+            Write-Log "BaseOU détecté automatiquement : $($script:Config.BaseOU)" -Level Info
+            Write-Log "Conteneur trouvé avec $($bestContainer.Value) sous-OUs" -Level Info
+        } else {
+            # Fallback : chercher une OU qui ressemble à un conteneur de villes
+            $fallbackOU = $allOUs | Where-Object { 
+                $_.Properties["distinguishedname"][0] -match "OU=(Sites|Locations|Cities|Villes|Agences|Bureaux)" 
+            } | Select-Object -First 1
+            
+            if ($fallbackOU) {
+                $script:Config.BaseOU = $fallbackOU.Properties["distinguishedname"][0]
+                Write-Log "BaseOU détecté par fallback : $($script:Config.BaseOU)" -Level Info
+            } else {
+                # Dernier recours : utiliser le domaine racine
+                $script:Config.BaseOU = $domainComponents
+                Write-Log "BaseOU défini sur le domaine racine : $($script:Config.BaseOU)" -Level Warning
+            }
+        }
+        
+        return $true
+        
+    } catch {
+        Write-Log "Erreur lors de la détection du domaine : $($_.Exception.Message)" -Level Error
+        # Fallback d'urgence
+        try {
+            $domain = Get-ADDomain -ErrorAction Stop
+            $script:Config.BaseOU = $domain.DistinguishedName
+            Write-Log "Utilisation du domaine racine par défaut : $($script:Config.BaseOU)" -Level Warning
+            return $true
+        } catch {
+            Write-Log "Impossible de détecter la structure AD" -Level Error
+            return $false
+        }
+    }
+}
+
+# Chargement des villes avec étoile pour les favoris
+function Load-Cities {
+    try {
+        $script:UIControls.cbCity.Items.Clear()
+        $favoriteCity = Load-FavoriteCity
+        
+        $root = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$($script:Config.BaseOU)")
+        $searcher = New-Object System.DirectoryServices.DirectorySearcher($root)
+        $searcher.Filter = "(objectCategory=organizationalUnit)"
+        $searcher.SearchScope = [System.DirectoryServices.SearchScope]::OneLevel
+        $searcher.PropertiesToLoad.Add("ou") | Out-Null
+        $searcher.ServerTimeLimit = [TimeSpan]::FromSeconds($script:Config.TimeoutSeconds)
+        
+        $ous = $searcher.FindAll() | ForEach-Object {
+            if ($_.Properties["ou"].Count -gt 0) { 
+                $_.Properties["ou"][0] 
+            }
+        } | Sort-Object
+        
+        if ($ous.Count -gt 0) {
+            foreach ($ou in $ous) { 
+                if ($ou -eq $favoriteCity) {
+                    $script:UIControls.cbCity.Items.Add("⭐ $ou")
+                } else {
+                    $script:UIControls.cbCity.Items.Add($ou)
+                }
+            }
+            Write-Log "Chargé $($ous.Count) villes depuis AD" -Level Info
+        } else {
+            Write-Log "Aucune OU trouvée dans AD" -Level Warning
+            return $false
+        }
+        
+        if ($favoriteCity) {
+            $favoriteWithStar = "⭐ $favoriteCity"
+            if ($script:UIControls.cbCity.Items.Contains($favoriteWithStar)) {
+                $script:UIControls.cbCity.SelectedItem = $favoriteWithStar
+            } elseif ($script:UIControls.cbCity.Items.Contains($favoriteCity)) {
+                $script:UIControls.cbCity.SelectedItem = $favoriteCity
+            }
+        } elseif ($script:UIControls.cbCity.Items.Count -gt 0) {
+            $script:UIControls.cbCity.SelectedIndex = 0
+        }
+        
+        return $true
+    } catch {
+        Write-Log "Erreur critique lors du chargement des villes: $($_.Exception.Message)" -Level Error
+        return $false
+    }
+}
+
+# Affichage des détails utilisateur
+function Show-UserDetails {
+    try {
+        Clear-UserDetails
+        
+        if (-not $script:UIControls.lbUsers.SelectedItem) {
+            return
+        }
+        
+        $selectedText = $script:UIControls.lbUsers.SelectedItem.ToString()
+        if ($selectedText -match '\[([^\]]+)\]') {
+            $samAccountName = $matches[1]
+        } else {
+            Write-Log "Impossible d'extraire le nom d'utilisateur de: $selectedText" -Level Warning
+            return
+        }
+        
+        Write-Log "Affichage des détails pour: $samAccountName" -Level Debug
+        
+        $user = Get-ADUser -Identity $samAccountName -Properties * -ErrorAction Stop
+        
+        # Changement du texte du bouton selon l'état du compte
+        if ($script:UIControls.btnDisable) {
+            if ($user.Enabled) {
+                $script:UIControls.btnDisable.Text = "Désactiver compte"
+                $script:UIControls.btnDisable.BackColor = $script:Theme.ButtonSecondary
+            } else {
+                $script:UIControls.btnDisable.Text = "Activer compte"
+                $script:UIControls.btnDisable.BackColor = [System.Drawing.Color]::FromArgb(34, 139, 34)
+            }
+        }
+        
+        # Remplissage des champs
+        if ($script:UIControls.detail["Path"]) { 
+            $script:UIControls.detail["Path"].Text = $user.DistinguishedName
+        }
+        if ($script:UIControls.detail["Nom"]) { 
+            $script:UIControls.detail["Nom"].Text = Get-ValueOrDefault $user.Surname ""
+        }
+        if ($script:UIControls.detail["Prenom"]) { 
+            $script:UIControls.detail["Prenom"].Text = Get-ValueOrDefault $user.GivenName ""
+        }
+        if ($script:UIControls.detail["Service"]) { 
+            $script:UIControls.detail["Service"].Text = Get-ValueOrDefault $user.Department ""
+        }
+        if ($script:UIControls.detail["Matricule"]) { 
+            $script:UIControls.detail["Matricule"].Text = Get-ValueOrDefault $user.EmployeeID ""
+        }
+        if ($script:UIControls.detail["Mail"]) { 
+            $script:UIControls.detail["Mail"].Text = Get-ValueOrDefault $user.EmailAddress ""
+        }
+        if ($script:UIControls.detail["Session"]) { 
+            $script:UIControls.detail["Session"].Text = $user.SamAccountName 
+        }
+        
+        # État du compte
+        $accountStatus = if ($user.Enabled) {
+            "Compte actif"
+        } else {
+            "Compte désactivé"
+        }
+        if ($script:UIControls.detail["Etat"]) { 
+            $script:UIControls.detail["Etat"].Text = $accountStatus 
+        }
+        
+        # Dates avec formatage
+        if ($script:UIControls.detail["Exp"]) {
+            $script:UIControls.detail["Exp"].Text = if ($user.AccountExpirationDate) {
+                $user.AccountExpirationDate.ToString("dd/MM/yyyy HH:mm")
+            } else {
+                "Jamais"
+            }
+        }
+        
+        if ($script:UIControls.detail["ExpPwd"]) {
+            if ($user.PasswordLastSet) {
+                try {
+                    $pwdPolicy = Get-ADDefaultDomainPasswordPolicy
+                    $pwdExpiry = $user.PasswordLastSet.AddDays($pwdPolicy.MaxPasswordAge.Days)
+                    $script:UIControls.detail["ExpPwd"].Text = $pwdExpiry.ToString("dd/MM/yyyy HH:mm")
+                } catch {
+                    $script:UIControls.detail["ExpPwd"].Text = "Inconnu"
+                }
+            } else {
+                $script:UIControls.detail["ExpPwd"].Text = "Jamais défini"
+            }
+        }
+        
+        if ($script:UIControls.detail["LastLogon"]) {
+            $script:UIControls.detail["LastLogon"].Text = if ($user.LastLogonDate) {
+                $user.LastLogonDate.ToString("dd/MM/yyyy HH:mm")
+            } else {
+                "Jamais connecté"
+            }
+        }
+        
+        if ($script:UIControls.detail["Created"]) {
+            $script:UIControls.detail["Created"].Text = if ($user.Created) {
+                $user.Created.ToString("dd/MM/yyyy HH:mm")
+            } else {
+                "Inconnu"
+            }
+        }
+        
+        # Chargement des groupes
+        try {
+            $groups = Get-ADPrincipalGroupMembership -Identity $samAccountName -ErrorAction Stop | 
+                     Select-Object -ExpandProperty Name | 
+                     Sort-Object
+            
+            if ($script:UIControls.lbGrps) {
+                foreach ($group in $groups) {
+                    $script:UIControls.lbGrps.Items.Add($group)
+                }
+            }
+            
+            Write-Log "Chargé $($groups.Count) groupes pour $samAccountName" -Level Debug
+        } catch {
+            Write-Log "Erreur lors du chargement des groupes pour $samAccountName : $($_.Exception.Message)" -Level Warning
+        }
+        
+    } catch {
+        Write-Log "Erreur lors de l'affichage des détails : $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur d'affichage" "Impossible d'afficher les détails de l'utilisateur: $($_.Exception.Message)"
+    }
+}
+
+# Recherche avec affichage "Nom Prénom"
+function Refresh-Users {
+    try {
+        $script:UIControls.lbUsers.Items.Clear()
+        Clear-UserDetails
+        
+        if (-not $script:UIControls.cbCity.SelectedItem) {
+            Write-Log "Aucune ville sélectionnée" -Level Warning
+            return
+        }
+        
+        $selectedCityRaw = $script:UIControls.cbCity.SelectedItem.ToString()
+        $selectedCity = $selectedCityRaw -replace "⭐ ", ""
+        
+        $searchTerm = $script:UIControls.txtSearch.Text.Trim()
+        
+        if ([string]::IsNullOrWhiteSpace($searchTerm) -or $searchTerm -eq "Saisir un terme de recherche...") {
+            Write-Log "Aucun terme de recherche - liste vide maintenue" -Level Info
+            return
+        }
+        
+        if ($searchTerm.Length -lt 2) {
+            Show-InfoMessage "Veuillez saisir au moins 2 caractères pour effectuer une recherche."
+            return
+        }
+        
+        $searchBase = "OU=$selectedCity,$($script:Config.BaseOU)"
+        
+        try {
+            $null = Get-ADOrganizationalUnit -Identity $searchBase -ErrorAction Stop
+        } catch {
+            Show-ErrorMessage "OU introuvable" "L'unité organisationnelle '$searchBase' n'existe pas."
+            return
+        }
+        
+        Write-Log "Recherche dans $searchBase avec terme: '$searchTerm'" -Level Debug
+        
+        $users = Get-ADUser -SearchBase $searchBase -Filter "GivenName -like '*$searchTerm*' -or Surname -like '*$searchTerm*' -or SamAccountName -like '*$searchTerm*' -or DisplayName -like '*$searchTerm*'" -Properties Name, SamAccountName, Enabled, Department, GivenName, Surname, DisplayName |
+                 Sort-Object Surname, GivenName |
+                 Select-Object -First 500
+        
+        foreach ($user in $users) {
+            # Affichage "Nom Prénom" au lieu de "Prénom Nom"
+            $displayName = "$($user.Surname) $($user.GivenName) [$($user.SamAccountName)]"
+            
+            if (-not $user.Enabled) {
+                $displayName += " [DÉSACTIVÉ]"
+            }
+            
+            if ($user.Department) {
+                $displayName += " - $($user.Department)"
+            }
+            $script:UIControls.lbUsers.Items.Add($displayName)
+        }
+        
+        Write-Log "Trouvé $($users.Count) utilisateurs correspondant à '$searchTerm'" -Level Info
+        
+        if ($users.Count -eq 0) {
+            Show-InfoMessage "Aucun utilisateur trouvé avec le terme de recherche '$searchTerm'."
+        } elseif ($users.Count -eq 500) {
+            Show-InfoMessage "Plus de 500 résultats trouvés. Seuls les 500 premiers sont affichés. Affinez votre recherche."
+        }
+        
+    } catch {
+        Write-Log "Erreur lors de la recherche d'utilisateurs: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur de recherche" "Impossible de rechercher les utilisateurs: $($_.Exception.Message)"
+    }
+}
+
+# Extraction de la ville depuis le Distinguished Name
+function Get-UserCityFromDN {
+    param([string]$DistinguishedName)
+    
+    try {
+        # Pattern pour extraire la ville : OU=VilleName,OU=FR,DC=...
+        if ($DistinguishedName -match "OU=([^,]+),OU=FR,DC=") {
+            $extractedCity = $matches[1]
+            
+            # Vérifier que cette ville existe dans notre liste
+            $root = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$($script:Config.BaseOU)")
+            $searcher = New-Object System.DirectoryServices.DirectorySearcher($root)
+            $searcher.Filter = "(&(objectCategory=organizationalUnit)(ou=$extractedCity))"
+            $searcher.SearchScope = [System.DirectoryServices.SearchScope]::OneLevel
+            $result = $searcher.FindOne()
+            
+            if ($result) {
+                Write-Log "Ville détectée depuis DN : $extractedCity" -Level Debug
+                return $extractedCity
+            } else {
+                Write-Log "Ville '$extractedCity' non trouvée dans la liste des villes disponibles" -Level Warning
+            }
+        } else {
+            Write-Log "Impossible d'extraire la ville depuis le DN : $DistinguishedName" -Level Warning
+        }
+        
+        return $null
+        
+    } catch {
+        Write-Log "Erreur lors de l'extraction de la ville : $($_.Exception.Message)" -Level Warning
+        return $null
+    }
+}
+
+#Synchronisation de la ville dans le ComboBox principal
+function Sync-MainCitySelection {
+    param([string]$CityName)
+    
+    try {
+        if ([string]::IsNullOrWhiteSpace($CityName)) {
+            return
+        }
+        
+        # Chercher la ville avec ou sans étoile dans le ComboBox principal
+        $cityWithStar = "⭐ $CityName"
+        $cityFound = $false
+        
+        # Vérifier d'abord avec l'étoile (ville favorite)
+        if ($script:UIControls.cbCity.Items.Contains($cityWithStar)) {
+            $script:UIControls.cbCity.SelectedItem = $cityWithStar
+            $cityFound = $true
+            Write-Log "Ville favorite sélectionnée automatiquement : $CityName" -Level Info
+        }
+        # Sinon chercher sans étoile
+        elseif ($script:UIControls.cbCity.Items.Contains($CityName)) {
+            $script:UIControls.cbCity.SelectedItem = $CityName
+            $cityFound = $true
+            Write-Log "Ville sélectionnée automatiquement : $CityName" -Level Info
+        }
+        
+        if ($cityFound) {
+            # IMPORTANT : Déclencher manuellement l'événement de changement de ville
+            # pour mettre à jour les ordinateurs et vider la liste des utilisateurs
+            try {
+                $script:UIControls.lbUsers.Items.Clear()
+                Clear-UserDetails
+                Load-ComputersWithoutSerial
+                Write-Log "Interface mise à jour automatiquement pour la ville : $CityName" -Level Info
+            } catch {
+                Write-Log "Erreur lors de la mise à jour de l'interface : $($_.Exception.Message)" -Level Warning
+            }
+        } else {
+            Write-Log "Ville '$CityName' non trouvée dans le ComboBox principal" -Level Warning
+        }
+        
+    } catch {
+        Write-Log "Erreur lors de la synchronisation de la ville : $($_.Exception.Message)" -Level Warning
+    }
+}
+
+# Vérification du module Active Directory
+try {
+    Import-Module ActiveDirectory -ErrorAction Stop
+    Write-Host "Module Active Directory chargé avec succès" -ForegroundColor Green
+} catch {
+    [System.Windows.Forms.MessageBox]::Show("Le module Active Directory n'est pas disponible. Veuillez l'installer ou exécuter le script sur un contrôleur de domaine.", "Erreur critique", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+    exit 1
+}
+
+# Configuration globale avec gestion d'erreurs robuste
+$script:Config = @{
+    BaseOU = $null
+    SettingsPath = Join-Path $env:APPDATA "InfoADScriptSettings.json"
+    LogPath = Join-Path $env:TEMP "ADUserManagement.log"
+    MaxRetries = 3
+    TimeoutSeconds = 30
+}
+
+# Variables UI critiques en portée script
+$script:UIControls = @{
+    Form = $null
+    btnReset = $null
+    btnDisable = $null
+    chkForce = $null
+    detail = @{}
+    lbUsers = $null
+    lbComputers = $null
+    grpComputers = $null
+    cbCity = $null
+    txtSearch = $null
+    lbGrps = $null
+    txtGroupSearch = $null
+    btnMoveUser = $null
+    logoBox = $null
+}
+
+# Système de logging avancé
+function Write-Log {
+    param(
+        [string]$Message,
+        [ValidateSet('Info', 'Warning', 'Error', 'Debug')]
+        [string]$Level = 'Info'
+    )
+    
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $logEntry = "[$timestamp] [$Level] $Message"
+    
+    try {
+        Add-Content -Path $script:Config.LogPath -Value $logEntry -ErrorAction SilentlyContinue
+    } catch {
+        # Fallback si impossible d'écrire dans le log
+    }
+    
+    # Affichage console selon le niveau
+    switch ($Level) {
+        'Error' { Write-Host $logEntry -ForegroundColor Red }
+        'Warning' { Write-Host $logEntry -ForegroundColor Yellow }
+        'Info' { Write-Host $logEntry -ForegroundColor Green }
+        'Debug' { Write-Host $logEntry -ForegroundColor Cyan }
+    }
+}
+
+# Gestion des paramètres avec validation
+function Load-FavoriteCity {
+    try {
+        if (Test-Path $script:Config.SettingsPath) {
+            $json = Get-Content $script:Config.SettingsPath -Raw -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+            if ($json.PSObject.Properties.Name -contains 'FavoriteCity') {
+                Write-Log "Ville favorite chargée: $($json.FavoriteCity)" -Level Debug
+                return $json.FavoriteCity
+            }
+        }
+    } catch {
+        Write-Log "Erreur lors du chargement de la ville favorite: $($_.Exception.Message)" -Level Warning
+    }
+    return $null
+}
+
+function Save-FavoriteCity {
+    param([string]$City)
+    
+    $cleanCity = $City -replace "⭐ ", ""
+    
+    if ([string]::IsNullOrWhiteSpace($cleanCity)) {
+        Write-Log "Tentative de sauvegarde d'une ville vide" -Level Warning
+        return
+    }
+    
+    try {
+        $settings = @{ FavoriteCity = $cleanCity }
+        $settings | ConvertTo-Json | Set-Content $script:Config.SettingsPath -ErrorAction Stop
+        Write-Log "Ville favorite sauvegardée: $cleanCity" -Level Info
+        
+        $currentSelection = $script:UIControls.cbCity.SelectedItem
+        Load-Cities
+        
+        $favoriteWithStar = "⭐ $cleanCity"
+        if ($script:UIControls.cbCity.Items.Contains($favoriteWithStar)) {
+            $script:UIControls.cbCity.SelectedItem = $favoriteWithStar
+        }
+        
+    } catch {
+        Write-Log "Erreur lors de la sauvegarde de la ville favorite: $($_.Exception.Message)" -Level Error
+    }
+}
+
+# Thème uniforme avec l'application
+$script:Theme = @{
+    Background = [System.Drawing.Color]::FromArgb(240, 240, 240)
+    Text = [System.Drawing.Color]::FromArgb(60, 60, 60)
+    Primary = [System.Drawing.Color]::FromArgb(80, 80, 80)
+    Secondary = [System.Drawing.Color]::FromArgb(120, 120, 120)
+    ButtonPrimary = [System.Drawing.Color]::FromArgb(90, 90, 90)
+    ButtonSecondary = [System.Drawing.Color]::FromArgb(110, 110, 110)
+    Light = [System.Drawing.Color]::FromArgb(250, 250, 250)
+    Dark = [System.Drawing.Color]::FromArgb(70, 70, 70)
+    White = [System.Drawing.Color]::White
+    ButtonBorder = [System.Drawing.Color]::FromArgb(100, 100, 100)
+}
+
+# Fonction de validation AD avec retry et détection automatique du domaine
+function Test-ADConnection {
+    param([int]$MaxRetries = $script:Config.MaxRetries)
+    
+    for ($i = 1; $i -le $MaxRetries; $i++) {
+        try {
+            $domain = Get-ADDomain -ErrorAction Stop
+            Write-Log "Connexion AD réussie au domaine: $($domain.DNSRoot)" -Level Info
+            
+            # Mise à jour automatique du BaseOU si pas encore défini
+            if ([string]::IsNullOrWhiteSpace($script:Config.BaseOU)) {
+                $domainComponents = $domain.DistinguishedName
+                
+                # Recherche automatique du conteneur principal des villes
+                try {
+                    $rootSearcher = New-Object System.DirectoryServices.DirectorySearcher
+                    $rootSearcher.SearchRoot = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$domainComponents")
+                    $rootSearcher.Filter = "(objectCategory=organizationalUnit)"
+                    $rootSearcher.SearchScope = [System.DirectoryServices.SearchScope]::Subtree
+                    $rootSearcher.PropertiesToLoad.Add("distinguishedName") | Out-Null
+                    
+                    $allOUs = $rootSearcher.FindAll()
+                    
+                    # Chercher le conteneur qui contient le plus d'OUs de villes
+                    $candidateContainers = @{}
+                    
+                    foreach ($ou in $allOUs) {
+                        $dn = $ou.Properties["distinguishedname"][0]
+                        if ($dn -notmatch "CN=|OU=Domain Controllers|OU=Microsoft Exchange") {
+                            $parentDN = ($dn -split ',', 2)[1]
+                            if ($parentDN -and $parentDN -ne $domainComponents) {
+                                if (-not $candidateContainers.ContainsKey($parentDN)) {
+                                    $candidateContainers[$parentDN] = 0
+                                }
+                                $candidateContainers[$parentDN]++
+                            }
+                        }
+                    }
+                    
+                    # Sélectionner le conteneur avec le plus d'OUs
+                    $bestContainer = $candidateContainers.GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 1
+                    
+                    if ($bestContainer -and $bestContainer.Value -gt 1) {
+                        $script:Config.BaseOU = $bestContainer.Key
+                        Write-Log "BaseOU détecté automatiquement : $($script:Config.BaseOU)" -Level Info
+                    } else {
+                        # Fallback : utiliser le domaine racine
+                        $script:Config.BaseOU = $domainComponents
+                        Write-Log "BaseOU défini sur le domaine racine : $($script:Config.BaseOU)" -Level Warning
+                    }
+                    
+                } catch {
+                    # Fallback d'urgence
+                    $script:Config.BaseOU = $domainComponents
+                    Write-Log "Erreur détection BaseOU, utilisation domaine racine : $($script:Config.BaseOU)" -Level Warning
+                }
+            }
+            
+            # Vérification que le BaseOU est accessible
+            if ($script:Config.BaseOU) {
+                try {
+                    $null = Get-ADOrganizationalUnit -Identity $script:Config.BaseOU -ErrorAction Stop
+                    Write-Log "BaseOU confirmé accessible : $($script:Config.BaseOU)" -Level Info
+                } catch {
+                    Write-Log "BaseOU non accessible, utilisation domaine racine" -Level Warning
+                    $script:Config.BaseOU = $domain.DistinguishedName
+                }
+            }
+            
+            return $true
+        } catch {
+            Write-Log "Tentative $i/$MaxRetries - Erreur de connexion AD: $($_.Exception.Message)" -Level Warning
+            if ($i -lt $MaxRetries) {
+                Start-Sleep -Seconds 2
+            }
+        }
+    }
+    return $false
+}
+
+# Fonctions de messagerie améliorées
+function Show-ErrorMessage {
+    param([string]$Title, [string]$Message)
+    Write-Log "ERREUR - $Title : $Message" -Level Error
+    [System.Windows.Forms.MessageBox]::Show($Message, $Title, [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+}
+
+function Show-InfoMessage {
+    param([string]$Message, [string]$Title = "Information")
+    Write-Log "INFO - $Title : $Message" -Level Info
+    [System.Windows.Forms.MessageBox]::Show($Message, $Title, [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+}
+
+function Show-ConfirmDialog {
+    param([string]$Message, [string]$Title = "Confirmation")
+    $result = [System.Windows.Forms.MessageBox]::Show($Message, $Title, [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Question)
+    return ($result -eq [System.Windows.Forms.DialogResult]::Yes)
+}
+
+# Génération sécurisée de mot de passe
+function New-SecurePassword {
+    param([string]$EmployeeID)
+    
+    if ([string]::IsNullOrWhiteSpace($EmployeeID)) {
+        throw "ID employé requis pour générer le mot de passe"
+    }
+    
+    $randomNumbers = -join ((0..9) | Get-Random -Count 6)
+    $specialChars = @('!', '@', '#', '$', '%', '&', '*')
+    $specialChar = $specialChars | Get-Random
+    
+    return "Foundever@$EmployeeID$specialChar$randomNumbers"
+}
+
+# Fonction pour gérer les valeurs nulles
+function Get-ValueOrDefault {
+    param(
+        [Parameter(ValueFromPipeline)]
+        $Value,
+        [string]$Default = ""
+    )
+    
+    if ($null -eq $Value -or [string]::IsNullOrWhiteSpace($Value)) {
+        return $Default
+    }
+    return $Value.ToString()
+}
+
+# FONCTION  Clear-UserDetails
+function Clear-UserDetails {                                
+    try {
+        # Effacer tous les champs de détails
+        foreach ($key in $script:UIControls.detail.Keys) {
+            if ($script:UIControls.detail[$key]) {
+                if ($script:UIControls.detail[$key] -is [System.Windows.Forms.TextBox]) {
+                    $script:UIControls.detail[$key].Text = ""
+                } elseif ($script:UIControls.detail[$key] -is [System.Windows.Forms.Label]) {
+                    $script:UIControls.detail[$key].Text = ""
+                    $script:UIControls.detail[$key].ForeColor = $script:Theme.Text
+                }
+            }
+        }
+        
+        # Effacer la liste des groupes
+        if ($script:UIControls.lbGrps) {
+            $script:UIControls.lbGrps.Items.Clear()
+        }
+        
+        # Réinitialiser les boutons
+        if ($script:UIControls.btnDisable) {
+            $script:UIControls.btnDisable.Text = "Désactiver compte"
+            $script:UIControls.btnDisable.BackColor = $script:Theme.ButtonSecondary
+        }
+        
+        if ($script:UIControls.btnReset) {
+            $script:UIControls.btnReset.Enabled = $true
+        }
+        
+        if ($script:UIControls.btnMoveUser) {
+            $script:UIControls.btnMoveUser.Enabled = $true
+        }
+        
+        Write-Log "Détails utilisateur effacés" -Level Debug
+        
+    } catch {
+        Write-Log "Erreur lors de l'effacement des détails: $($_.Exception.Message)" -Level Warning
+    }
+}
+
+# Réinitialisation avec presse-papier et choix "changement à l'ouverture de session"
+function Reset-UserPassword {
+    try {
+        if (-not $script:UIControls.lbUsers.SelectedItem) {
+            Show-InfoMessage "Veuillez sélectionner un utilisateur."
+            return
+        }
+        
+        $selectedText = $script:UIControls.lbUsers.SelectedItem.ToString()
+        if ($selectedText -match '\[([^\]]+)\]') {
+            $samAccountName = $matches[1]
+        } else {
+            Show-ErrorMessage "Erreur de sélection" "Impossible d'identifier l'utilisateur sélectionné."
+            return
+        }
+        
+        $user = Get-ADUser -Identity $samAccountName -Properties EmployeeID, Enabled, Surname, GivenName -ErrorAction Stop
+        
+        if ([string]::IsNullOrWhiteSpace($user.EmployeeID)) {
+            Show-ErrorMessage "Matricule manquant" "Le matricule est requis pour réinitialiser le mot de passe de $samAccountName."
+            return
+        }
+        
+        # Dialogue pour choisir le changement à l'ouverture de session
+        $changeAtLogonForm = New-Object System.Windows.Forms.Form -Property @{
+            Text = "Options de réinitialisation"
+            Size = [System.Drawing.Size]::new(450, 250)
+            StartPosition = "CenterParent"
+            FormBorderStyle = 'FixedDialog'
+            MaximizeBox = $false
+            MinimizeBox = $false
+            BackColor = $script:Theme.Background
+        }
+        
+        $lblQuestion = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Forcer le changement de mot de passe à l'ouverture de session ?"
+            Location = [System.Drawing.Point]::new(20, 20)
+            Size = [System.Drawing.Size]::new(400, 40)
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Primary
+            TextAlign = 'MiddleCenter'
+        }
+        
+        $lblUser = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Utilisateur : $($user.GivenName) $($user.Surname) [$samAccountName]"
+            Location = [System.Drawing.Point]::new(20, 70)
+            Size = [System.Drawing.Size]::new(400, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            ForeColor = $script:Theme.Text
+            TextAlign = 'MiddleCenter'
+        }
+        
+        $chkChangeAtLogon = New-Object System.Windows.Forms.CheckBox -Property @{
+            Text = "L'utilisateur doit changer le mot de passe à l'ouverture de session"
+            Location = [System.Drawing.Point]::new(20, 110)
+            Size = [System.Drawing.Size]::new(400, 30)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            ForeColor = $script:Theme.Text
+            Checked = $true
+        }
+        
+        $btnOK = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Réinitialiser"
+            Location = [System.Drawing.Point]::new(250, 160)
+            Size = [System.Drawing.Size]::new(100, 30)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            DialogResult = [System.Windows.Forms.DialogResult]::OK
+        }
+        
+        $btnCancel = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Annuler"
+            Location = [System.Drawing.Point]::new(360, 160)
+            Size = [System.Drawing.Size]::new(70, 30)
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            DialogResult = [System.Windows.Forms.DialogResult]::Cancel
+        }
+        
+        $changeAtLogonForm.Controls.AddRange(@($lblQuestion, $lblUser, $chkChangeAtLogon, $btnOK, $btnCancel))
+        
+        $result = $changeAtLogonForm.ShowDialog()
+        
+        if ($result -ne [System.Windows.Forms.DialogResult]::OK) {
+            return
+        }
+        
+        $forceChangeAtLogon = $chkChangeAtLogon.Checked
+        
+        if (-not $user.Enabled) {
+            Set-ADUser -Identity $samAccountName -Enabled $true
+            Write-Log "Compte $samAccountName activé" -Level Info
+        }
+        
+        $newPassword = New-SecurePassword $user.EmployeeID
+        $securePassword = ConvertTo-SecureString $newPassword -AsPlainText -Force
+        
+        Set-ADAccountPassword -Identity $samAccountName -Reset -NewPassword $securePassword
+        
+        # Appliquer ou non le changement à l'ouverture de session
+        if ($forceChangeAtLogon) {
+            Set-ADUser -Identity $samAccountName -ChangePasswordAtLogon $true
+            Write-Log "Changement de mot de passe à l'ouverture de session activé pour $samAccountName" -Level Info
+            $Changenextopensession = "Il sera a modifié à l'ouverture de session."
+        } else {
+            Set-ADUser -Identity $samAccountName -ChangePasswordAtLogon $false
+            Write-Log "Changement de mot de passe à l'ouverture de session désactivé pour $samAccountName" -Level Info
+        }
+        
+        # NOUVEAU : Copie automatique dans le presse-papier
+        try {
+            $successMessage = "Bonjour,`n" +
+                                "Le mot de passe de $($user.Surname) $($user.GivenName) est réinitialisé : $newPassword`n" +
+                                $Changenextopensession
+            [System.Windows.Forms.Clipboard]::SetText($successMessage)
+            $clipboardStatus = "✓ Mot de passe copié dans le presse-papier"
+            Write-Log "Mot de passe copié dans le presse-papier pour $samAccountName" -Level Info
+        } catch {
+            $clipboardStatus = "⚠ Impossible de copier dans le presse-papier"
+            Write-Log "Erreur lors de la copie dans le presse-papier: $($_.Exception.Message)" -Level Warning
+        }
+        
+        # Message personnalisé avec statut du presse-papier
+        $changeMessage = if ($forceChangeAtLogon) {
+            "Il sera à modifier à l'ouverture de session."
+        }
+        
+        $successMessage = "Bonjour,`n" +
+                         "Le mot de passe de $($user.Surname) $($user.GivenName) est réinitialisé : $newPassword`n" +
+                         "$changeMessage`n`n" +
+                         "$clipboardStatus"
+        
+        Show-InfoMessage $successMessage "Réinitialisation réussie"
+        
+        Write-Log "Mot de passe réinitialisé pour $samAccountName (changement à l'ouverture: $forceChangeAtLogon)" -Level Info
+        Show-UserDetails
+        
+    } catch {
+        Write-Log "Erreur lors de la réinitialisation du mot de passe: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur de réinitialisation" "Impossible de réinitialiser le mot de passe: $($_.Exception.Message)"
+    }
+}
+
+# Liste des utilisateurs
+function Initialize-UserList {
+    try {
+        $script:UIControls.lbUsers = New-Object System.Windows.Forms.ListBox -Property @{
+            Location = [System.Drawing.Point]::new(15, 105)
+            Size = [System.Drawing.Size]::new(310, 250)
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 10)
+            Anchor = 'Top,Left'
+            SelectionMode = 'One'
+        }
+        
+        $script:UIControls.lbUsers.Add_SelectedIndexChanged({
+            try { Show-UserDetails }
+            catch { Show-ErrorMessage "Erreur lors de l'affichage des détails" $_.Exception.Message }
+        })
+        
+        # Ajouter un message d'aide dans la liste vide
+        $script:UIControls.lbUsers.Items.Add("Effectuez une recherche pour afficher les utilisateurs")
+        
+        $script:UIControls.Form.Controls.Add($script:UIControls.lbUsers)
+        Write-Log "Liste des utilisateurs initialisée" -Level Info
+        return $true
+    } catch {
+        Write-Log "Erreur lors de l'initialisation de la liste des utilisateurs: $($_.Exception.Message)" -Level Error
+        return $false
+    }
+}
+
+# Panneau des ordinateurs 
+function Initialize-ComputersPanel {
+    try {
+        $script:UIControls.grpComputers = New-Object System.Windows.Forms.GroupBox -Property @{
+            Text = "Ordinateurs actifs sans N° série (Chargement...)"
+            Location = [System.Drawing.Point]::new(15, 365)
+            Size = [System.Drawing.Size]::new(310, 260)
+            BackColor = $script:Theme.Background
+            ForeColor = $script:Theme.Primary
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+            Anchor = 'Top,Left,Bottom'
+            FlatStyle = 'Flat'
+        }
+        
+        # Liste des ordinateurs
+        $script:UIControls.lbComputers = New-Object System.Windows.Forms.ListBox -Property @{
+            Location = [System.Drawing.Point]::new(10, 30)
+            Size = [System.Drawing.Size]::new(290, 170)
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            Anchor = 'Top,Left,Right,Bottom'
+            SelectionMode = 'One'
+            BorderStyle = 'FixedSingle'
+        }
+        
+        # Double-clic pour modifier le numéro de série
+        $script:UIControls.lbComputers.Add_DoubleClick({
+            try { Show-SerialNumberDialog }
+            catch { Show-ErrorMessage "Erreur" $_.Exception.Message }
+        })
+        
+        # Bouton Actualiser
+        $btnRefresh = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Actualiser"
+            Location = [System.Drawing.Point]::new(10, 210)
+            Size = [System.Drawing.Size]::new(140, 35)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            Cursor = [System.Windows.Forms.Cursors]::Hand
+        }
+        
+        # Bouton Recherche
+        $btnSearch = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Recherche"
+            Location = [System.Drawing.Point]::new(160, 210)
+            Size = [System.Drawing.Size]::new(140, 35)
+            BackColor = $script:Theme.Secondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            Cursor = [System.Windows.Forms.Cursors]::Hand
+        }
+
+        
+        # Événements
+        $btnRefresh.Add_Click({
+            try { Load-ComputersWithoutSerial }
+            catch { Show-ErrorMessage "Erreur" $_.Exception.Message }
+        })
+        
+        $btnSearch.Add_Click({
+            try { Show-SimpleComputerSearch }
+            catch { Show-ErrorMessage "Erreur" $_.Exception.Message }
+        })
+        
+        # Ajout de tous les contrôles SANS Auto-Serial et SANS Export CSV
+        $script:UIControls.grpComputers.Controls.AddRange(@(
+            $script:UIControls.lbComputers, 
+            $separator,
+            $btnRefresh, 
+            $btnSearch
+        ))
+        
+        $script:UIControls.Form.Controls.Add($script:UIControls.grpComputers)
+        Load-ComputersWithoutSerial
+        
+        Write-Log "Panneau ordinateurs avec design amélioré initialisé" -Level Info
+        return $true
+    } catch {
+        Write-Log "Erreur initialisation panneau ordinateurs: $($_.Exception.Message)" -Level Error
+        return $false
+    }
+}
+
+# Chargement des ordinateurs filtrés par ville sélectionnée
+function Load-ComputersWithoutSerial {
+    try {
+        $script:UIControls.lbComputers.Items.Clear()
+        
+        # Vérification que BaseOU est défini
+        if ([string]::IsNullOrWhiteSpace($script:Config.BaseOU)) {
+            $script:UIControls.lbComputers.Items.Add("Configuration AD en cours...")
+            $script:UIControls.grpComputers.Text = "PC sans N° série - Configuration"
+            
+            # Tentative de reconfiguration
+            if (Test-ADConnection) {
+                # Relancer le chargement après configuration
+                Load-ComputersWithoutSerial
+                return
+            } else {
+                $script:UIControls.lbComputers.Items.Clear()
+                $script:UIControls.lbComputers.Items.Add("Erreur de configuration AD")
+                $script:UIControls.grpComputers.Text = "PC sans N° série - Erreur"
+                return
+            }
+        }
+        
+        $selectedCity = ""
+        if ($script:UIControls.cbCity.SelectedItem) {
+            $selectedCityRaw = $script:UIControls.cbCity.SelectedItem.ToString()
+            $selectedCity = $selectedCityRaw -replace "⭐ ", ""
+        }
+        
+        if ([string]::IsNullOrWhiteSpace($selectedCity)) {
+            $script:UIControls.lbComputers.Items.Add("Veuillez sélectionner une ville")
+            $script:UIControls.grpComputers.Text = "PC sans N° série"
+            return
+        }
+        
+        $searchBase = "OU=$selectedCity,$($script:Config.BaseOU)"
+        
+        try {
+            $null = Get-ADOrganizationalUnit -Identity $searchBase -ErrorAction Stop
+        } catch {
+            $script:UIControls.lbComputers.Items.Add("Ville introuvable : $selectedCity")
+            $script:UIControls.grpComputers.Text = "PC sans N° série - Erreur"
+            Write-Log "OU introuvable : $searchBase" -Level Warning
+            return
+        }
+        
+        # Recherche améliorée avec détection des numéros de série invalides
+        $computers = Get-ADComputer -SearchBase $searchBase -Filter "Enabled -eq 'True'" -Properties Name, SerialNumber, Description, OperatingSystem, LastLogonDate |
+                    Where-Object { 
+                        [string]::IsNullOrWhiteSpace($_.SerialNumber) -or 
+                        $_.SerialNumber -eq "To be filled by O.E.M." -or 
+                        $_.SerialNumber -eq "Default string" -or 
+                        $_.SerialNumber -eq "System Serial Number" -or
+                        $_.SerialNumber -eq "Not Specified" -or
+                        $_.SerialNumber -eq "0" -or
+                        $_.SerialNumber.Length -lt 3
+                    } |
+                    Sort-Object Name |
+                    Select-Object -First 100
+        
+        if ($computers.Count -eq 0) {
+            $script:UIControls.lbComputers.Items.Add("Tous les PC ont un N° série valide")
+        } else {
+            foreach ($computer in $computers) {
+                $displayName = $computer.Name
+                
+                if (-not [string]::IsNullOrWhiteSpace($computer.OperatingSystem)) {
+                    $osShort = $computer.OperatingSystem -replace "Microsoft Windows ", "Win"
+                    $displayName += " [$osShort]"
+                }
+                
+                if ($computer.LastLogonDate -and $computer.LastLogonDate -gt (Get-Date).AddDays(-7)) {
+                    $displayName += " [RECENT]"
+                } else {
+                    $displayName += " [ACTIF]"
+                }
+                
+                $script:UIControls.lbComputers.Items.Add($displayName)
+            }
+        }
+        
+        $script:UIControls.grpComputers.Text = "PC sans N° série ($($computers.Count))"
+        Write-Log "Chargement terminé : $($computers.Count) ordinateurs sans série dans $selectedCity" -Level Info
+        
+    } catch {
+        Write-Log "Erreur lors du chargement des ordinateurs: $($_.Exception.Message)" -Level Error
+        $script:UIControls.lbComputers.Items.Clear()
+        $script:UIControls.lbComputers.Items.Add("Erreur de chargement - Voir logs")
+        $script:UIControls.grpComputers.Text = "PC sans N° série - Erreur"
+    }
+}
+# Dialogue pour saisir le numéro de série, depuis la recherche
+function Show-SerialNumberDialog {
+    param([string]$ComputerName = $null)
+    
+    try {
+        # Si pas de nom fourni, utiliser la sélection de la liste principale
+        if ([string]::IsNullOrWhiteSpace($ComputerName)) {
+            if (-not $script:UIControls.lbComputers.SelectedItem) {
+                Show-InfoMessage "Veuillez sélectionner un ordinateur."
+                return
+            }
+            
+            $selectedText = $script:UIControls.lbComputers.SelectedItem.ToString()
+            if ($selectedText -match "Aucun ordinateur|Veuillez sélectionner|Ville introuvable|Erreur de chargement|Tous les PC ont") {
+                return
+            }
+            
+            $ComputerName = $selectedText
+            $ComputerName = ($ComputerName -split ' \[')[0]
+            $ComputerName = ($ComputerName -split ' - ')[0]
+            $ComputerName = $ComputerName.Trim()
+        }
+        
+        # Formulaire simplifié
+        $dialogForm = New-Object System.Windows.Forms.Form -Property @{
+            Text = "Numéro de série - $ComputerName"
+            Size = [System.Drawing.Size]::new(450, 200)
+            StartPosition = "CenterParent"
+            FormBorderStyle = 'FixedDialog'
+            MaximizeBox = $false
+            MinimizeBox = $false
+            BackColor = $script:Theme.Background
+        }
+        
+        $lblInstruction = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Veuillez entrer le numéro de série :"
+            Location = [System.Drawing.Point]::new(20, 20)
+            Size = [System.Drawing.Size]::new(400, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Primary
+        }
+        
+        $lblComputer = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Ordinateur : $ComputerName"
+            Location = [System.Drawing.Point]::new(20, 45)
+            Size = [System.Drawing.Size]::new(400, 20)
+            ForeColor = $script:Theme.Text
+        }
+        
+        $txtSerial = New-Object System.Windows.Forms.TextBox -Property @{
+            Location = [System.Drawing.Point]::new(20, 75)
+            Size = [System.Drawing.Size]::new(400, 25)
+            BackColor = $script:Theme.White
+            MaxLength = 50
+        }
+        
+        $btnOK = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Valider"
+            Location = [System.Drawing.Point]::new(260, 120)
+            Size = [System.Drawing.Size]::new(80, 30)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+        }
+        
+        $btnCancel = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Annuler"
+            Location = [System.Drawing.Point]::new(350, 120)
+            Size = [System.Drawing.Size]::new(80, 30)
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+        }
+        
+        $btnOK.Add_Click({
+            $serialNumber = $txtSerial.Text.Trim()
+            
+            if ([string]::IsNullOrWhiteSpace($serialNumber)) {
+                Show-InfoMessage "Veuillez saisir un numéro de série."
+                return
+            }
+            
+            if ($serialNumber.Length -lt 3) {
+                Show-InfoMessage "Le numéro de série doit contenir au moins 3 caractères."
+                return
+            }
+            
+            try {
+                Update-ComputerSerialInAD $ComputerName $serialNumber
+                $dialogForm.Close()
+            } catch {
+                Show-ErrorMessage "Erreur de mise à jour" $_.Exception.Message
+            }
+        })
+        
+        $txtSerial.Add_KeyDown({
+            if ($_.KeyCode -eq 'Enter') {
+                $btnOK.PerformClick()
+            }
+        })
+        
+        $btnCancel.Add_Click({ $dialogForm.Close() })
+        
+        $dialogForm.Add_Shown({ $txtSerial.Focus() })
+        
+        $dialogForm.Controls.AddRange(@($lblInstruction, $lblComputer, $txtSerial, $btnOK, $btnCancel))
+        $dialogForm.ShowDialog()
+        
+    } catch {
+        Show-ErrorMessage "Erreur" $_.Exception.Message
+    }
+}
+
+# Mise à jour du numéro de série dans AD avec rafraîchissement immédiat
+function Update-ComputerSerialInAD {
+    param(
+        [string]$ComputerName,
+        [string]$SerialNumber
+    )
+    
+    try {
+        # Vérifier que l'ordinateur existe
+        $computer = Get-ADComputer -Identity $ComputerName -ErrorAction Stop
+        
+        $confirmMessage = "Mettre à jour le numéro de série ?`n`n" +
+                         "Ordinateur : $ComputerName`n" +
+                         "Nouveau numéro de série : $SerialNumber`n`n" +
+                         "Cette action remplacera le numéro de série existant."
+        
+        if (-not (Show-ConfirmDialog $confirmMessage "Confirmation de mise à jour")) {
+            return
+        }
+        
+        # REMPLACER le numéro de série existant
+        Set-ADComputer -Identity $ComputerName -Replace @{SerialNumber = $SerialNumber} -ErrorAction Stop
+        
+        Write-Log "Numéro de série mis à jour pour $ComputerName : $SerialNumber" -Level Info
+        
+        Show-InfoMessage "Numéro de série mis à jour avec succès !`n`nOrdinateur : $ComputerName`nNuméro de série : $SerialNumber" "Mise à jour réussie"
+        
+        # NOUVEAU : Rafraîchissement immédiat de la liste
+        Load-ComputersWithoutSerial
+        
+    } catch {
+        Write-Log "Erreur lors de la mise à jour du numéro de série: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur de mise à jour" "Impossible de mettre à jour le numéro de série dans Active Directory:`n$($_.Exception.Message)"
+    }
+}
+
+# Panneau de détails avec texte "info user" 
+function Initialize-DetailsPanel {
+    try {
+        $grpDetails = New-Object System.Windows.Forms.GroupBox -Property @{
+            Text = "Informations utilisateur"
+            Location = [System.Drawing.Point]::new(335, 105)
+            Size = [System.Drawing.Size]::new(670, 500)
+            BackColor = $script:Theme.Background
+            ForeColor = $script:Theme.Primary
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+            Anchor = 'Top,Left,Right,Bottom'
+        }
+        
+        $fields = @(
+            @{ Key="Path"; Label="Chemin AD :" },
+            @{ Key="Nom"; Label="Nom :" },
+            @{ Key="Prenom"; Label="Prénom :" },
+            @{ Key="Service"; Label="Service :" },
+            @{ Key="Matricule"; Label="Matricule :" },
+            @{ Key="Mail"; Label="Email :" },
+            @{ Key="Session"; Label="Nom de session :" },
+            @{ Key="Etat"; Label="État du compte :" },
+            @{ Key="Exp"; Label="Expiration compte :" },
+            @{ Key="ExpPwd"; Label="Exp. mot de passe :" },
+            @{ Key="LastLogon"; Label="Dernière connexion :" },
+            @{ Key="Created"; Label="Date de création :" }
+        )
+        
+        $currentY = 30
+        $labelWidth = 160
+        $valueWidth = 420
+        $spacing = 30
+        
+        foreach ($field in $fields) {
+            $lblStatic = New-Object System.Windows.Forms.Label -Property @{
+                Text = $field.Label
+                Location = [System.Drawing.Point]::new(20, $currentY)
+                Size = [System.Drawing.Size]::new($labelWidth, 24)
+                TextAlign = 'MiddleRight'
+                ForeColor = $script:Theme.Text
+                Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Regular)
+            }
+            
+            if ($field.Key -eq "Path") {
+                $valueControl = New-Object System.Windows.Forms.TextBox -Property @{
+                    Location = [System.Drawing.Point]::new(190, $currentY)
+                    Size = [System.Drawing.Size]::new(370, 24)
+                    ReadOnly = $true
+                    BackColor = $script:Theme.Light
+                    ForeColor = $script:Theme.Text
+                    Font = [System.Drawing.Font]::new("Segoe UI", 8, [System.Drawing.FontStyle]::Regular)
+                    Anchor = 'Top,Left,Right'
+                }
+                
+                $script:UIControls.btnMoveUser = New-Object System.Windows.Forms.Button -Property @{
+                    Text = "Déplacer"
+                    Location = [System.Drawing.Point]::new(570, $currentY)
+                    Size = [System.Drawing.Size]::new(90, 24)
+                    BackColor = $script:Theme.ButtonPrimary
+                    ForeColor = $script:Theme.White
+                    FlatStyle = 'Flat'
+                    Font = [System.Drawing.Font]::new("Segoe UI", 8, [System.Drawing.FontStyle]::Regular)
+                    Anchor = 'Top,Right'
+                }
+                
+                $script:UIControls.btnMoveUser.Add_Click({
+                    try { Move-UserToOU }
+                    catch { Show-ErrorMessage "Erreur lors du déplacement" $_.Exception.Message }
+                })
+                
+                $grpDetails.Controls.AddRange(@($lblStatic, $valueControl, $script:UIControls.btnMoveUser))
+            } else {
+                $valueControl = New-Object System.Windows.Forms.Label -Property @{
+                    Location = [System.Drawing.Point]::new(190, $currentY)
+                    Size = [System.Drawing.Size]::new($valueWidth, 24)
+                    BorderStyle = 'Fixed3D'
+                    BackColor = $script:Theme.Light
+                    ForeColor = $script:Theme.Text
+                    TextAlign = 'MiddleLeft'
+                    Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Regular)
+                    Anchor = 'Top,Left,Right'
+                }
+                $grpDetails.Controls.AddRange(@($lblStatic, $valueControl))
+            }
+            
+            $script:UIControls.detail[$field.Key] = $valueControl
+            $currentY += $spacing
+        }
+        
+        # Séparateur visuel
+        $separator = New-Object System.Windows.Forms.Label -Property @{
+            Location = [System.Drawing.Point]::new(20, $currentY + 5)
+            Size = [System.Drawing.Size]::new(630, 2)
+            BackColor = $script:Theme.Primary
+            Anchor = 'Top,Left,Right'
+        }
+        $grpDetails.Controls.Add($separator)
+        
+        # Boutons repositionnés
+        $buttonY = $currentY + 25
+        $buttonWidth = 310
+        $buttonSpacing = 15
+        
+        $script:UIControls.btnReset = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Réinitialiser mot de passe"
+            Location = [System.Drawing.Point]::new(20, $buttonY)
+            Size = [System.Drawing.Size]::new($buttonWidth, 50)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 11, [System.Drawing.FontStyle]::Regular)
+            Cursor = [System.Windows.Forms.Cursors]::Hand
+        }
+        
+        $script:UIControls.btnDisable = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Désactiver compte"
+            Location = [System.Drawing.Point]::new((20 + $buttonWidth + $buttonSpacing), $buttonY)
+            Size = [System.Drawing.Size]::new($buttonWidth, 50)
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 11, [System.Drawing.FontStyle]::Regular)
+            Cursor = [System.Windows.Forms.Cursors]::Hand
+        }
+
+        
+        $grpDetails.Controls.AddRange(@($script:UIControls.btnReset, $script:UIControls.btnDisable))
+        
+        # Événements
+        $script:UIControls.btnReset.Add_Click({
+            try { Reset-UserPassword }
+            catch { Show-ErrorMessage "Erreur lors de la réinitialisation" $_.Exception.Message }
+        })
+        
+        $script:UIControls.btnDisable.Add_Click({
+            try { 
+                if ($script:UIControls.btnDisable.Text -eq "Désactiver compte") {
+                    Disable-UserAccount 
+                } else {
+                    Enable-UserAccount
+                }
+            }
+            catch { Show-ErrorMessage "Erreur lors de l'opération" $_.Exception.Message }
+        })
+        
+        $script:UIControls.Form.Controls.Add($grpDetails)
+        Write-Log "Panneau de détails initialisé" -Level Info
+        return $true
+    } catch {
+        Write-Log "Erreur lors de l'initialisation du panneau de détails: $($_.Exception.Message)" -Level Error
+        return $false
+    }
+}
+
+# Panneau des groupes avec champ de recherche
+function Initialize-GroupsPanel {
+    try {
+        $grpGroups = New-Object System.Windows.Forms.GroupBox -Property @{
+            Text = "Groupes d'appartenance"
+            Location = [System.Drawing.Point]::new(1015, 105)
+            Size = [System.Drawing.Size]::new(380, 500)
+            BackColor = $script:Theme.Background
+            ForeColor = $script:Theme.Primary
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+            Anchor = 'Top,Right,Bottom'
+        }
+        
+        $script:UIControls.lbGrps = New-Object System.Windows.Forms.ListBox -Property @{
+            Location = [System.Drawing.Point]::new(20, 30)
+            Size = [System.Drawing.Size]::new(340, 250)
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            Anchor = 'Top,Left,Right,Bottom'
+            SelectionMode = 'One'
+        }
+        
+        $script:UIControls.txtGroupSearch = New-Object System.Windows.Forms.TextBox -Property @{
+            Location = [System.Drawing.Point]::new(20, 350)
+            Width = 250
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            Anchor = 'Bottom,Left,Right'
+        }
+        # NOUVEAU : Bouton de gestion en lot
+            $btnBulkManagement = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Gestion en lot"
+            Location = [System.Drawing.Point]::new(20, 435)
+            Width = 340
+            Height = 30
+            BackColor = [System.Drawing.Color]::FromArgb(70, 130, 180)
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            Anchor = 'Bottom,Left,Right'
+         }
+
+        $btnBulkManagement.Add_Click({
+            try { Show-BulkUserManagement }
+            catch { Show-ErrorMessage "Erreur" $_.Exception.Message }
+        })
+
+   # Ajout du bouton au GroupBox des groupes 
+   $grpGroups.Controls.Add($btnBulkManagement)
+        
+        # Placeholder pour la recherche
+        $script:UIControls.txtGroupSearch.Add_Enter({
+            if ($script:UIControls.txtGroupSearch.Text -eq "Rechercher un groupe...") {
+                $script:UIControls.txtGroupSearch.Text = ""
+                $script:UIControls.txtGroupSearch.ForeColor = $script:Theme.Text
+            }
+        })
+        
+        $script:UIControls.txtGroupSearch.Add_Leave({
+            if ([string]::IsNullOrWhiteSpace($script:UIControls.txtGroupSearch.Text)) {
+                $script:UIControls.txtGroupSearch.Text = "Rechercher un groupe..."
+                $script:UIControls.txtGroupSearch.ForeColor = [System.Drawing.Color]::Gray
+            }
+        })
+        
+        $script:UIControls.txtGroupSearch.Text = "Rechercher un groupe..."
+        $script:UIControls.txtGroupSearch.ForeColor = [System.Drawing.Color]::Gray
+        
+        $btnSearchGroup = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Rechercher"
+            Location = [System.Drawing.Point]::new(280, 345)
+            Width = 80
+            Height = 30
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 8, [System.Drawing.FontStyle]::Bold)
+            Anchor = 'Bottom,Right'
+        }
+        
+        $btnRemoveGrp = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Retirer du groupe"
+            Location = [System.Drawing.Point]::new(20,385)
+            Width = 340
+            Height = 40
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 8, [System.Drawing.FontStyle]::Bold)
+            Anchor = 'Bottom,Left,Right'
+        }
+        
+        $grpGroups.Controls.AddRange(@($script:UIControls.lbGrps, $script:UIControls.txtGroupSearch, $btnSearchGroup, $btnRemoveGrp))
+        
+        # Événements
+        $btnSearchGroup.Add_Click({
+            try { Search-ADGroups }
+            catch { Show-ErrorMessage "Erreur lors de la recherche de groupes" $_.Exception.Message }
+        })
+        
+        $script:UIControls.txtGroupSearch.Add_KeyDown({
+            if ($_.KeyCode -eq 'Enter') {
+                try { Search-ADGroups }
+                catch { Show-ErrorMessage "Erreur lors de la recherche de groupes" $_.Exception.Message }
+            }
+        })
+        
+        $btnRemoveGrp.Add_Click({
+            try { Remove-UserFromGroup }
+            catch { Show-ErrorMessage "Erreur lors de la suppression du groupe" $_.Exception.Message }
+        })
+        
+        $script:UIControls.Form.Controls.Add($grpGroups)
+        Write-Log "Panneau des groupes avec recherche initialisé" -Level Info
+        return $true
+    } catch {
+        Write-Log "Erreur lors de l'initialisation du panneau des groupes: $($_.Exception.Message)" -Level Error
+        return $false
+    }
+    
+}
+
+# Recherche de groupes dans tout l'AD
+function Search-ADGroups {
+    try {
+        $searchTerm = $script:UIControls.txtGroupSearch.Text.Trim()
+        
+        if ([string]::IsNullOrWhiteSpace($searchTerm) -or $searchTerm -eq "Rechercher un groupe...") {
+            Show-InfoMessage "Veuillez saisir un terme de recherche pour les groupes."
+            return
+        }
+        
+        if ($searchTerm.Length -lt 3) {
+            Show-InfoMessage "Veuillez saisir au moins 3 caractères pour la recherche."
+            return
+        }
+        
+        $groups = Get-ADGroup -Filter "Name -like '*$searchTerm*'" -Properties Name, Description | 
+                  Sort-Object Name | 
+                  Select-Object -First 50
+        
+        if ($groups.Count -eq 0) {
+            Show-InfoMessage "Aucun groupe trouvé avec le terme '$searchTerm'."
+            return
+        }
+        
+        # Fenêtre de sélection
+        $groupSelectionForm = New-Object System.Windows.Forms.Form -Property @{
+            Text = "Sélectionner un groupe"
+            Size = [System.Drawing.Size]::new(500, 400)
+            StartPosition = "CenterParent"
+            FormBorderStyle = 'FixedDialog'
+            MaximizeBox = $false
+            MinimizeBox = $false
+            BackColor = $script:Theme.Background
+        }
+        
+        $groupListBox = New-Object System.Windows.Forms.ListBox -Property @{
+            Location = [System.Drawing.Point]::new(20, 20)
+            Size = [System.Drawing.Size]::new(440, 280)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+        }
+        
+        foreach ($group in $groups) {
+            $displayName = if ($group.Description) {
+                "$($group.Name) - $($group.Description)"
+            } else {
+                $group.Name
+            }
+            $groupListBox.Items.Add($displayName)
+        }
+        
+        $btnSelect = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Ajouter au groupe"
+            Location = [System.Drawing.Point]::new(280, 320)
+            Size = [System.Drawing.Size]::new(120, 30)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+        }
+        
+        $btnCancel = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Annuler"
+            Location = [System.Drawing.Point]::new(410, 320)
+            Size = [System.Drawing.Size]::new(70, 30)
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+        }
+        
+        $btnSelect.Add_Click({
+            if ($groupListBox.SelectedItem) {
+                $selectedGroup = $groupListBox.SelectedItem.ToString()
+                if ($selectedGroup -match '^([^-]+)') {
+                    $groupName = $matches[1].Trim()
+                } else {
+                    $groupName = $selectedGroup
+                }
+                try {
+                    Add-UserToSelectedGroup $groupName
+                    $groupSelectionForm.Close()
+                } catch {
+                    Show-ErrorMessage "Erreur lors de l'ajout au groupe" $_.Exception.Message
+                }
+            } else {
+                Show-InfoMessage "Veuillez sélectionner un groupe."
+            }
+        })
+        
+        $btnCancel.Add_Click({
+            $groupSelectionForm.Close()
+        })
+        
+        $groupSelectionForm.Controls.AddRange(@($groupListBox, $btnSelect, $btnCancel))
+        $groupSelectionForm.ShowDialog()
+        
+    } catch {
+        Write-Log "Erreur lors de la recherche de groupes: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur de recherche" "Impossible de rechercher les groupes: $($_.Exception.Message)"
+    }
+}
+
+# Fonction pour ajouter un utilisateur au groupe sélectionné
+function Add-UserToSelectedGroup {
+    param([string]$GroupName)
+    
+    if (-not $script:UIControls.lbUsers.SelectedItem) {
+        Show-InfoMessage "Veuillez sélectionner un utilisateur."
+        return
+    }
+    
+    $selectedText = $script:UIControls.lbUsers.SelectedItem.ToString()
+    if ($selectedText -match '\[([^\]]+)\]') {
+        $samAccountName = $matches[1]
+    } else {
+        Show-ErrorMessage "Erreur de sélection" "Impossible d'identifier l'utilisateur sélectionné."
+        return
+    }
+    
+    try {
+        $currentGroups = Get-ADPrincipalGroupMembership -Identity $samAccountName | Select-Object -ExpandProperty Name
+        if ($currentGroups -contains $GroupName) {
+            Show-InfoMessage "L'utilisateur est déjà membre du groupe '$GroupName'."
+            return
+        }
+        
+        if (-not (Show-ConfirmDialog "Ajouter $samAccountName au groupe '$GroupName' ?" "Confirmation d'ajout")) {
+            return
+        }
+        
+        Add-ADGroupMember -Identity $GroupName -Members $samAccountName
+        Write-Log "Utilisateur $samAccountName ajouté au groupe $GroupName" -Level Info
+        
+        Show-InfoMessage "Utilisateur ajouté au groupe '$GroupName' avec succès !"
+        Show-UserDetails
+    } catch {
+        Write-Log "Erreur lors de l'ajout au groupe: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur d'ajout" "Impossible d'ajouter l'utilisateur au groupe: $($_.Exception.Message)"
+    }
+}
+
+# Suppression d'utilisateur d'un groupe
+function Remove-UserFromGroup {
+    try {
+        if (-not $script:UIControls.lbUsers.SelectedItem) {
+            Show-InfoMessage "Veuillez sélectionner un utilisateur."
+            return
+        }
+        
+        if (-not $script:UIControls.lbGrps.SelectedItem) {
+            Show-InfoMessage "Veuillez sélectionner un groupe dans la liste des appartenances."
+            return
+        }
+        
+        $selectedText = $script:UIControls.lbUsers.SelectedItem.ToString()
+        if ($selectedText -match '\[([^\]]+)\]') {
+            $samAccountName = $matches[1]
+        } else {
+            Show-ErrorMessage "Erreur de sélection" "Impossible d'identifier l'utilisateur sélectionné."
+            return
+        }
+        
+        $groupName = $script:UIControls.lbGrps.SelectedItem.ToString()
+        
+        if ($groupName -eq "Domain Users") {
+            Show-ErrorMessage "Action interdite" "Impossible de retirer un utilisateur du groupe 'Domain Users'."
+            return
+        }
+        
+        if (-not (Show-ConfirmDialog "Retirer $samAccountName du groupe '$groupName' ?" "Confirmation de suppression")) {
+            return
+        }
+        
+        Remove-ADGroupMember -Identity $groupName -Members $samAccountName -Confirm:$false
+        Write-Log "Utilisateur $samAccountName retiré du groupe $groupName" -Level Info
+        
+        Show-InfoMessage "Utilisateur retiré du groupe '$groupName' avec succès !"
+        Show-UserDetails
+        
+    } catch {
+        Write-Log "Erreur lors de la suppression du groupe: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur de suppression" "Impossible de retirer l'utilisateur du groupe: $($_.Exception.Message)"
+    }
+}
+
+# Déplacement d'utilisateur avec synchronisation automatique de la ville
+function Move-UserToOU {
+    try {
+        if (-not $script:UIControls.lbUsers.SelectedItem) {
+            Show-InfoMessage "Veuillez sélectionner un utilisateur."
+            return
+        }
+        
+        $selectedText = $script:UIControls.lbUsers.SelectedItem.ToString()
+        if ($selectedText -match '\[([^\]]+)\]') {
+            $samAccountName = $matches[1]
+        } else {
+            Show-ErrorMessage "Erreur" "Impossible d'identifier l'utilisateur sélectionné."
+            return
+        }
+        
+        # Récupération des informations utilisateur
+        $user = Get-ADUser -Identity $samAccountName -Properties DistinguishedName, GivenName, Surname -ErrorAction Stop
+        
+        # NOUVEAU : Détection automatique de la ville de l'utilisateur
+        $detectedCity = Get-UserCityFromDN $user.DistinguishedName
+        
+        # NOUVEAU : Synchronisation automatique de la ville dans le ComboBox principal
+        if ($detectedCity) {
+            Sync-MainCitySelection $detectedCity
+            Write-Log "Ville principale synchronisée automatiquement : $detectedCity" -Level Info
+        }
+        
+        # Interface de déplacement avec ville pré-sélectionnée
+        Show-UniformMoveInterface $user $detectedCity
+        
+    } catch {
+        Write-Log "Erreur lors du déplacement: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur" "Impossible d'ouvrir la fenêtre de déplacement: $($_.Exception.Message)"
+    }
+}
+
+# Fonction pour désactiver un compte utilisateur
+function Disable-UserAccount {
+    try {
+        if (-not $script:UIControls.lbUsers.SelectedItem) {
+            Show-InfoMessage "Veuillez sélectionner un utilisateur."
+            return
+        }
+        
+        $selectedText = $script:UIControls.lbUsers.SelectedItem.ToString()
+        if ($selectedText -match '\[([^\]]+)\]') {
+            $samAccountName = $matches[1]
+        } else {
+            Show-ErrorMessage "Erreur de sélection" "Impossible d'identifier l'utilisateur sélectionné."
+            return
+        }
+        
+        $user = Get-ADUser -Identity $samAccountName -Properties Surname, GivenName, Enabled, DistinguishedName, Description -ErrorAction Stop
+        
+        if (-not $user.Enabled) {
+            Show-InfoMessage "Le compte de $($user.GivenName) $($user.Surname) est déjà désactivé."
+            return
+        }
+        
+        # Déterminer la ville d'origine
+        $currentDN = $user.DistinguishedName
+        
+        if ($currentDN -match "OU=([^,]+),OU=FR,DC=") {
+            $extractedCity = $matches[1]
+            try {
+                $root = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$($script:Config.BaseOU)")
+                $searcher = New-Object System.DirectoryServices.DirectorySearcher($root)
+                $searcher.Filter = "(&(objectCategory=organizationalUnit)(ou=$extractedCity))"
+                $searcher.SearchScope = [System.DirectoryServices.SearchScope]::OneLevel
+                $result = $searcher.FindOne()
+                
+                if ($result) {
+                    $userCity = $extractedCity
+                    Write-Log "Ville d'origine détectée : $userCity pour $samAccountName" -Level Info
+                }
+            } catch {
+                Write-Log "Erreur lors de la détection de la ville, utilisation de Wasquehal par défaut" -Level Warning
+            }
+        }
+        
+        $confirmMessage = "ATTENTION - DÉSACTIVATION DE COMPTE`n`n" +
+                         "Vous êtes sur le point de désactiver le compte de :`n`n" +
+                         "Utilisateur : $($user.GivenName) $($user.Surname)`n" +
+                         "Identifiant : $samAccountName`n" +
+                         "Ville d'origine détectée : $userCity`n`n" +
+                         "Cette action va :`n" +
+                         "• Désactiver le compte`n" +
+                         "• Déplacer vers l'OU 'Disable Users' de $userCity`n" +
+                         "• Retirer de tous les groupes (sauf Domain Users)`n`n" +
+                         "Voulez-vous continuer ?"
+        
+        if (-not (Show-ConfirmDialog $confirmMessage "Confirmation de désactivation")) {
+            return
+        }
+        
+        # Construire le chemin de l'OU
+        $disabledOUPath = "OU=Disable Users,OU=Others,OU=$userCity,OU=FR,DC=Marche,DC=lan"
+        $ouExists = $false
+        
+        try {
+            $null = Get-ADOrganizationalUnit -Identity $disabledOUPath -ErrorAction Stop
+            $ouExists = $true
+            Write-Log "OU Disable Users trouvée pour $userCity : $disabledOUPath" -Level Info
+        } catch {
+            Write-Log "OU 'Disable Users' introuvable pour $userCity : $disabledOUPath" -Level Warning
+        }
+        
+        # Désactiver le compte
+        try {
+            Disable-ADAccount -Identity $samAccountName -ErrorAction Stop
+            Write-Log "Compte $samAccountName désactivé avec succès" -Level Info
+            
+            # MISE À JOUR AUTOMATIQUE DE L'AFFICHAGE DANS LA LISTE
+            $currentIndex = $script:UIControls.lbUsers.SelectedIndex
+            if ($currentIndex -ge 0) {
+                $displayText = $script:UIControls.lbUsers.Items[$currentIndex].ToString()
+                if ($displayText -notmatch '\[DÉSACTIVÉ\]') {
+                    # Ajouter le marqueur [DÉSACTIVÉ] après le nom d'utilisateur
+                    $newDisplayText = $displayText -replace '(\[[^\]]+\])', '$1 [DÉSACTIVÉ]'
+                    $script:UIControls.lbUsers.Items[$currentIndex] = $newDisplayText
+                }
+            }
+            
+            # MISE À JOUR AUTOMATIQUE DU BOUTON
+            if ($script:UIControls.btnDisable) {
+                $script:UIControls.btnDisable.Text = "Activer compte"
+                $script:UIControls.btnDisable.BackColor = [System.Drawing.Color]::Gray 
+            }
+            
+            # MISE À JOUR AUTOMATIQUE DE L'ÉTAT DANS LES DÉTAILS
+            if ($script:UIControls.detail["Etat"]) {
+                $script:UIControls.detail["Etat"].Text = "Compte désactivé"
+                $script:UIControls.detail["Etat"].ForeColor = [System.Drawing.Color]::Gray
+            }
+            
+        } catch {
+            Write-Log "Erreur lors de la désactivation du compte: $($_.Exception.Message)" -Level Error
+            Show-ErrorMessage "Erreur de désactivation" "Impossible de désactiver le compte: $($_.Exception.Message)"
+            return
+        }
+        
+        # Déplacer vers l'OU appropriée (version sécurisée)
+        if ($ouExists) {
+            try {
+                $originalDescription = $user.Description
+                Move-ADObject -Identity $user.DistinguishedName -TargetPath $disabledOUPath -ErrorAction Stop
+                Write-Log "Compte $samAccountName déplacé vers OU Disable Users de $userCity" -Level Info
+                
+                # Restaurer la description avec retry
+                if (-not [string]::IsNullOrEmpty($originalDescription)) {
+                    $retryCount = 0
+                    do {
+                        try {
+                            Start-Sleep -Milliseconds 500
+                            Set-ADUser -Identity $samAccountName -Description $originalDescription -ErrorAction Stop
+                            Write-Log "Description restaurée pour $samAccountName" -Level Debug
+                            break
+                        } catch {
+                            $retryCount++
+                            if ($retryCount -ge 3) {
+                                Write-Log "Impossible de restaurer la description après 3 tentatives" -Level Warning
+                                break
+                            }
+                            Start-Sleep -Seconds 1
+                        }
+                    } while ($retryCount -lt 3)
+                }
+                
+                # MISE À JOUR DU CHEMIN AD DANS LES DÉTAILS
+                if ($script:UIControls.detail["Path"]) {
+                    $script:UIControls.detail["Path"].Text = "OU=Disable Users,OU=Others,OU=$userCity,OU=FR,DC=Marche,DC=lan"
+                }
+                
+                $moveResult = "• Déplacé vers l'OU Disable Users de $userCity"
+            } catch {
+                Write-Log "Erreur lors du déplacement: $($_.Exception.Message)" -Level Warning
+                $moveResult = "• Erreur lors du déplacement: $($_.Exception.Message)"
+            }
+        } else {
+            $moveResult = "• Aucune OU 'Disable Users' disponible - compte non déplacé"
+        }
+        
+        # Retirer des groupes (version sécurisée)
+        $groupsRemoved = 0
+        $groupErrors = @()
+        try {
+            $userGroups = Get-ADPrincipalGroupMembership -Identity $samAccountName -ErrorAction Stop
+            foreach ($group in $userGroups) {
+                if ($group.Name -ne "Domain Users") {
+                    try {
+                        Remove-ADGroupMember -Identity $group.Name -Members $samAccountName -Confirm:$false -ErrorAction Stop
+                        $groupsRemoved++
+                        Write-Log "Utilisateur $samAccountName retiré du groupe $($group.Name)" -Level Debug
+                    } catch {
+                        $errorMsg = "Erreur suppression groupe $($group.Name): $($_.Exception.Message)"
+                        $groupErrors += $errorMsg
+                        Write-Log $errorMsg -Level Warning
+                    }
+                }
+            }
+            
+            # MISE À JOUR DE LA LISTE DES GROUPES
+            if ($script:UIControls.lbGrps) {
+                $script:UIControls.lbGrps.Items.Clear()
+                $script:UIControls.lbGrps.Items.Add("Domain Users")  # Seul groupe restant
+            }
+            
+        } catch {
+            Write-Log "Erreur lors de la récupération des groupes: $($_.Exception.Message)" -Level Warning
+            $groupErrors += "Impossible de récupérer la liste des groupes"
+        }
+        
+        $groupResult = if ($groupErrors.Count -gt 0) {
+            "• Retiré de $groupsRemoved groupe(s) avec $($groupErrors.Count) erreur(s)"
+        } else {
+            "• Retiré de $groupsRemoved groupe(s)"
+        }
+        
+        $successMessage = "DÉSACTIVATION TERMINÉE`n`n" +
+                         "Le compte de $($user.GivenName) $($user.Surname) a été traité.`n`n" +
+                         "Actions effectuées :`n" +
+                         "• Compte désactivé`n" +
+                         "$moveResult`n" +
+                         "$groupResult`n`n" +
+                         "Désactivation effectuée le : $(Get-Date -Format "dd/MM/yyyy à HH:mm:ss")`n" +
+                         "Par : $env:USERNAME"
+        
+        Show-InfoMessage $successMessage "Désactivation terminée"
+        
+        Write-Log "Processus de désactivation terminé pour $samAccountName" -Level Info
+        
+    } catch {
+        Write-Log "Erreur critique lors de la désactivation: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur critique" "Erreur lors de la désactivation du compte: $($_.Exception.Message)"
+    }
+}
+
+# Fonction pour activer un compte utilisateur
+function Enable-UserAccount {
+    try {
+        if (-not $script:UIControls.lbUsers.SelectedItem) {
+            Show-InfoMessage "Veuillez sélectionner un utilisateur."
+            return
+        }
+        
+        $selectedText = $script:UIControls.lbUsers.SelectedItem.ToString()
+        if ($selectedText -match '\[([^\]]+)\]') {
+            $samAccountName = $matches[1]
+        } else {
+            Show-ErrorMessage "Erreur de sélection" "Impossible d'identifier l'utilisateur sélectionné."
+            return
+        }
+        
+        $user = Get-ADUser -Identity $samAccountName -Properties Surname, GivenName, Enabled, DistinguishedName, Description -ErrorAction Stop
+        
+        if ($user.Enabled) {
+            Show-InfoMessage "Le compte de $($user.GivenName) $($user.Surname) est déjà activé."
+            return
+        }
+        
+        $confirmMessage = "ACTIVATION DE COMPTE`n`n" +
+                         "Vous êtes sur le point d'activer le compte :`n`n" +
+                         "Utilisateur : $($user.GivenName) $($user.Surname)`n" +
+                         "Identifiant : $samAccountName`n`n" +
+                         "Souhaitez-vous continuer ?"
+        
+        if (-not (Show-ConfirmDialog $confirmMessage "Confirmation d'activation")) {
+            return
+        }
+        
+        # Activer le compte
+        try {
+            Enable-ADAccount -Identity $samAccountName -ErrorAction Stop
+            Write-Log "Compte $samAccountName activé avec succès" -Level Info
+            
+            # MISE À JOUR AUTOMATIQUE DE L'AFFICHAGE DANS LA LISTE
+            $currentIndex = $script:UIControls.lbUsers.SelectedIndex
+            if ($currentIndex -ge 0) {
+                $displayText = $script:UIControls.lbUsers.Items[$currentIndex].ToString()
+                if ($displayText -match '\[DÉSACTIVÉ\]') {
+                    # Enlever le marqueur [DÉSACTIVÉ] de l'affichage
+                    $newDisplayText = $displayText -replace ' \[DÉSACTIVÉ\]', ''
+                    $script:UIControls.lbUsers.Items[$currentIndex] = $newDisplayText
+                }
+            }
+            
+            # MISE À JOUR AUTOMATIQUE DU BOUTON
+            if ($script:UIControls.btnDisable) {
+                $script:UIControls.btnDisable.Text = "Désactiver compte"
+                $script:UIControls.btnDisable.BackColor = $script:Theme.ButtonSecondary
+            }
+            
+            # MISE À JOUR AUTOMATIQUE DE L'ÉTAT DANS LES DÉTAILS
+            if ($script:UIControls.detail["Etat"]) {
+                $script:UIControls.detail["Etat"].Text = "Compte actif"
+                $script:UIControls.detail["Etat"].ForeColor = [System.Drawing.Color]::Gray  
+            }
+            
+        } catch {
+            Write-Log "Erreur lors de l'activation du compte: $($_.Exception.Message)" -Level Error
+            Show-ErrorMessage "Erreur d'activation" "Impossible d'activer le compte: $($_.Exception.Message)"
+            return
+        }
+        
+        # Préserver la description
+        $originalDescription = $user.Description
+        if (-not [string]::IsNullOrEmpty($originalDescription)) {
+            Set-ADUser -Identity $samAccountName -Description $originalDescription -ErrorAction SilentlyContinue
+        }
+        
+        # Réinitialiser le mot de passe avec choix
+        $user2 = Get-ADUser -Identity $samAccountName -Properties EmployeeID -ErrorAction Stop
+        if (-not [string]::IsNullOrWhiteSpace($user2.EmployeeID)) {
+            $newPassword = New-SecurePassword $user2.EmployeeID
+            $securePassword = ConvertTo-SecureString $newPassword -AsPlainText -Force
+            Set-ADAccountPassword -Identity $samAccountName -Reset -NewPassword $securePassword
+            Set-ADUser -Identity $samAccountName -ChangePasswordAtLogon $true
+            
+            # NOUVEAU : Copie automatique dans le presse-papier
+            try {
+                [System.Windows.Forms.Clipboard]::SetText($newPassword)
+                $clipboardStatus = "✓ Mot de passe copié dans le presse-papier"
+                Write-Log "Mot de passe copié dans le presse-papier pour $samAccountName" -Level Info
+            } catch {
+                $clipboardStatus = "⚠ Impossible de copier dans le presse-papier"
+                Write-Log "Erreur lors de la copie dans le presse-papier: $($_.Exception.Message)" -Level Warning
+            }
+            
+            $passwordMessage = "Bonjour,`nLe mot de passe de $($user.Surname) $($user.GivenName) est réinitialisé : $newPassword`nIl sera à modifier à l'ouverture de session.`n`n$clipboardStatus"
+            Show-InfoMessage $passwordMessage "Mot de passe"
+        }
+        
+        # NOUVEAU : Correspondance avec la ville sélectionnée dans la fenêtre principale
+        $selectedCityRaw = $script:UIControls.cbCity.SelectedItem.ToString()
+        $selectedCity = $selectedCityRaw -replace "⭐ ", ""
+        
+        # Interface de déplacement pré-configurée avec la ville correspondante
+        $updatedUser = Get-ADUser -Identity $samAccountName -Properties DistinguishedName,GivenName,Surname -ErrorAction Stop
+        Show-UniformMoveInterface $updatedUser $selectedCity
+        
+        Write-Log "Processus d'activation terminé pour $samAccountName" -Level Info
+        Show-UserDetails
+        
+    } catch {
+        Write-Log "Erreur critique lors de l'activation: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur critique" "Erreur lors de l'activation du compte: $($_.Exception.Message)"
+    }
+}
+
+# Interface de déplacement avec ville pré-sélectionnée
+function Show-UniformMoveInterface {
+    param(
+        [Microsoft.ActiveDirectory.Management.ADUser]$User,
+        [string]$PreSelectedCity = $null
+    )
+    
+    try {
+        # Création de la fenêtre principale
+        $moveForm = New-Object System.Windows.Forms.Form -Property @{
+            Text = "Déplacement d'utilisateur"
+            Size = [System.Drawing.Size]::new(900, 700)
+            StartPosition = "CenterParent"
+            FormBorderStyle = 'FixedDialog'
+            MaximizeBox = $false
+            MinimizeBox = $false
+            BackColor = $script:Theme.Background
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+        }
+        
+        # En-tête avec style uniforme
+        $headerPanel = New-Object System.Windows.Forms.Panel -Property @{
+            Location = [System.Drawing.Point]::new(15, 15)
+            Size = [System.Drawing.Size]::new(860, 70)
+            BackColor = $script:Theme.Light
+            BorderStyle = 'FixedSingle'
+        }
+        
+        $lblTitle = New-Object System.Windows.Forms.Label -Property @{
+            Text = "DÉPLACEMENT D'UTILISATEUR"
+            Location = [System.Drawing.Point]::new(15, 15)
+            Size = [System.Drawing.Size]::new(830, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Primary
+            TextAlign = 'MiddleCenter'
+        }
+        
+        $lblUserInfo = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Utilisateur : $($User.GivenName) $($User.Surname) [$($User.SamAccountName)]"
+            Location = [System.Drawing.Point]::new(15, 40)
+            Size = [System.Drawing.Size]::new(830, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 10)
+            ForeColor = $script:Theme.Text
+            TextAlign = 'MiddleCenter'
+        }
+        
+        $headerPanel.Controls.AddRange(@($lblTitle, $lblUserInfo))
+        
+        # Section emplacement actuel avec style uniforme
+        $currentPanel = New-Object System.Windows.Forms.Panel -Property @{
+            Location = [System.Drawing.Point]::new(15, 95)
+            Size = [System.Drawing.Size]::new(860, 60)
+            BackColor = $script:Theme.Light
+            BorderStyle = 'FixedSingle'
+        }
+        
+        $lblCurrentTitle = New-Object System.Windows.Forms.Label -Property @{
+            Text = "EMPLACEMENT ACTUEL"
+            Location = [System.Drawing.Point]::new(15, 10)
+            Size = [System.Drawing.Size]::new(200, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Primary
+        }
+        
+        $txtCurrentPath = New-Object System.Windows.Forms.TextBox -Property @{
+            Text = $User.DistinguishedName
+            Location = [System.Drawing.Point]::new(15, 30)
+            Size = [System.Drawing.Size]::new(830, 20)
+            ReadOnly = $true
+            Font = [System.Drawing.Font]::new("Consolas", 8)
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+            BorderStyle = 'Fixed3D'
+        }
+        
+        $currentPanel.Controls.AddRange(@($lblCurrentTitle, $txtCurrentPath))
+        
+        # Section sélection de ville avec style uniforme
+        $cityPanel = New-Object System.Windows.Forms.Panel -Property @{
+            Location = [System.Drawing.Point]::new(15, 165)
+            Size = [System.Drawing.Size]::new(860, 60)
+            BackColor = $script:Theme.Light
+            BorderStyle = 'FixedSingle'
+        }
+        
+        $lblCityTitle = New-Object System.Windows.Forms.Label -Property @{
+            Text = "VILLE DE DESTINATION"
+            Location = [System.Drawing.Point]::new(15, 10)
+            Size = [System.Drawing.Size]::new(200, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Primary
+        }
+        
+        $cbDestinationCity = New-Object System.Windows.Forms.ComboBox -Property @{
+            Location = [System.Drawing.Point]::new(220, 8)
+            Width = 200
+            DropDownStyle = 'DropDownList'
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+        }
+        
+        $btnLoadFolders = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Charger les dossiers"
+            Location = [System.Drawing.Point]::new(430, 7)
+            Size = [System.Drawing.Size]::new(150, 26)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            Enabled = $false
+        }
+        
+        $btnLoadFolders.FlatAppearance.BorderSize = 0
+        
+        $cityPanel.Controls.AddRange(@($lblCityTitle, $cbDestinationCity, $btnLoadFolders))
+        
+        # TreeView pour les dossiers avec style uniforme
+        $lblTreeTitle = New-Object System.Windows.Forms.Label -Property @{
+            Text = "DOSSIERS DISPONIBLES"
+            Location = [System.Drawing.Point]::new(30, 235)
+            Size = [System.Drawing.Size]::new(300, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Primary
+        }
+        
+        $tvDestination = New-Object System.Windows.Forms.TreeView -Property @{
+            Location = [System.Drawing.Point]::new(30, 260)
+            Size = [System.Drawing.Size]::new(840, 300)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+            ShowLines = $true
+            ShowPlusMinus = $true
+            ShowRootLines = $true
+            FullRowSelect = $true
+            HideSelection = $false
+            ItemHeight = 22
+            Indent = 30
+            BorderStyle = 'Fixed3D'
+        }
+        
+        # Zone d'information avec style uniforme
+        $selectionPanel = New-Object System.Windows.Forms.Panel -Property @{
+            Location = [System.Drawing.Point]::new(15, 570)
+            Size = [System.Drawing.Size]::new(860, 35)
+            BackColor = $script:Theme.Light
+            BorderStyle = 'FixedSingle'
+        }
+        
+        $lblSelectionInfo = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Chargement automatique des dossiers..."
+            Location = [System.Drawing.Point]::new(15, 8)
+            Size = [System.Drawing.Size]::new(830, 18)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Italic)
+            ForeColor = $script:Theme.Text
+            TextAlign = 'MiddleLeft'
+        }
+        
+        $selectionPanel.Controls.Add($lblSelectionInfo)
+        
+        # Boutons avec style uniforme
+        $btnMove = New-Object System.Windows.Forms.Button -Property @{
+            Text = "DÉPLACER VERS CE DOSSIER"
+            Location = [System.Drawing.Point]::new(580, 615)
+            Size = [System.Drawing.Size]::new(180, 35)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            Enabled = $false
+        }
+        
+        $btnCancel = New-Object System.Windows.Forms.Button -Property @{
+            Text = "ANNULER"
+            Location = [System.Drawing.Point]::new(770, 615)
+            Size = [System.Drawing.Size]::new(100, 35)
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $btnMove.FlatAppearance.BorderSize = 0
+        $btnCancel.FlatAppearance.BorderSize = 0
+        
+        # Chargement des villes disponibles
+        Load-AvailableCitiesForMove $cbDestinationCity
+        
+        # MODIFIÉ : Chargement automatique avec ville correspondante ou favorite
+        $cityToSelect = $PreSelectedCity
+        if (-not $cityToSelect) {
+            $cityToSelect = Load-FavoriteCity
+        }
+        
+        if ($cityToSelect) {
+            $cityWithStar = "⭐ $cityToSelect"
+            if ($cbDestinationCity.Items.Contains($cityWithStar)) {
+                $cbDestinationCity.SelectedItem = $cityWithStar
+                $btnLoadFolders.Enabled = $true
+                Load-UniformCityFolders $cityToSelect $tvDestination $lblSelectionInfo $User.DistinguishedName
+                $lblSelectionInfo.Text = "Dossiers chargés pour la ville correspondante : $cityToSelect"
+            } elseif ($cbDestinationCity.Items.Contains($cityToSelect)) {
+                $cbDestinationCity.SelectedItem = $cityToSelect
+                $btnLoadFolders.Enabled = $true
+                Load-UniformCityFolders $cityToSelect $tvDestination $lblSelectionInfo $User.DistinguishedName
+                $lblSelectionInfo.Text = "Dossiers chargés pour la ville correspondante : $cityToSelect"
+            }
+        }
+        
+        # Événements
+        $cbDestinationCity.Add_SelectedIndexChanged({
+            $btnLoadFolders.Enabled = ($cbDestinationCity.SelectedItem -ne $null)
+            if ($cbDestinationCity.SelectedItem) {
+                $selectedCity = $cbDestinationCity.SelectedItem.ToString() -replace "⭐ ", ""
+                # Chargement automatique quand on change de ville
+                Load-UniformCityFolders $selectedCity $tvDestination $lblSelectionInfo $User.DistinguishedName
+                $lblSelectionInfo.Text = "Dossiers chargés pour $selectedCity"
+            } else {
+                $tvDestination.Nodes.Clear()
+                $lblSelectionInfo.Text = "Sélectionnez une ville de destination"
+                $btnMove.Enabled = $false
+            }
+        })
+        
+        $btnLoadFolders.Add_Click({
+            $selectedCity = $cbDestinationCity.SelectedItem.ToString() -replace "⭐ ", ""
+            Load-UniformCityFolders $selectedCity $tvDestination $lblSelectionInfo $User.DistinguishedName
+        })
+        
+        $tvDestination.Add_AfterSelect({
+            if ($tvDestination.SelectedNode -and $tvDestination.SelectedNode.Tag) {
+                $selectedPath = $tvDestination.SelectedNode.Tag
+                if ($selectedPath -ne $User.DistinguishedName) {
+                    $lblSelectionInfo.Text = "Destination sélectionnée : $($tvDestination.SelectedNode.Text)"
+                    $lblSelectionInfo.ForeColor = $script:Theme.Primary
+                    $btnMove.Enabled = $true
+                } else {
+                    $lblSelectionInfo.Text = "L'utilisateur est déjà dans ce dossier"
+                    $lblSelectionInfo.ForeColor = $script:Theme.Secondary
+                    $btnMove.Enabled = $false
+                }
+            } else {
+                $lblSelectionInfo.Text = "Sélectionnez un dossier de destination"
+                $lblSelectionInfo.ForeColor = $script:Theme.Text
+                $btnMove.Enabled = $false
+            }
+        })
+        
+        $btnMove.Add_Click({
+            if ($tvDestination.SelectedNode -and $tvDestination.SelectedNode.Tag) {
+                Execute-UniformUserMove $User $tvDestination.SelectedNode.Tag $tvDestination.SelectedNode.Text $moveForm
+            }
+        })
+        
+        $btnCancel.Add_Click({
+            $moveForm.Close()
+        })
+        
+        # Ajout des contrôles au formulaire
+        $moveForm.Controls.AddRange(@($headerPanel, $currentPanel, $cityPanel, $lblTreeTitle, $tvDestination, $selectionPanel, $btnMove, $btnCancel))
+        
+        # Affichage du formulaire
+        $moveForm.ShowDialog()
+        
+    } catch {
+        Write-Log "Erreur lors de l'affichage de l'interface de déplacement: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur" "Impossible d'afficher l'interface de déplacement: $($_.Exception.Message)"
+    }
+}
+
+# Fonction pour charger les villes
+function Load-AvailableCitiesForMove {
+    param([System.Windows.Forms.ComboBox]$ComboBox)
+    
+    try {
+        $ComboBox.Items.Clear()
+        
+        # Récupération des villes depuis AD
+        $root = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$($script:Config.BaseOU)")
+        $searcher = New-Object System.DirectoryServices.DirectorySearcher($root)
+        $searcher.Filter = "(objectCategory=organizationalUnit)"
+        $searcher.SearchScope = [System.DirectoryServices.SearchScope]::OneLevel
+        $searcher.PropertiesToLoad.Add("ou") | Out-Null
+        
+        $cities = $searcher.FindAll() | ForEach-Object {
+            if ($_.Properties["ou"].Count -gt 0) { 
+                $_.Properties["ou"][0] 
+            }
+        } | Sort-Object | Select-Object -Unique
+        
+        # Récupération de la ville favorite
+        $favoriteCity = Load-FavoriteCity
+        
+        # Ajout de la ville favorite en premier
+        if ($favoriteCity -and $cities -contains $favoriteCity) {
+            $ComboBox.Items.Add("⭐ $favoriteCity")
+        }
+        
+        # Ajout des autres villes
+        foreach ($city in $cities) {
+            if ($city -ne $favoriteCity) {
+                $ComboBox.Items.Add($city)
+            }
+        }
+        
+    } catch {
+        Write-Log "Erreur lors du chargement des villes: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur" "Impossible de charger la liste des villes: $($_.Exception.Message)"
+    }
+}
+
+# Fonction pour charger les dossiers 
+function Load-UniformCityFolders {
+    param(
+        [string]$SelectedCity,
+        [System.Windows.Forms.TreeView]$TreeView,
+        [System.Windows.Forms.Label]$InfoLabel,
+        [string]$CurrentUserPath
+    )
+    
+    try {
+        $TreeView.BeginUpdate()
+        $TreeView.Nodes.Clear()
+        
+        $cityBasePath = "OU=$SelectedCity,$($script:Config.BaseOU)"
+        
+        # Dossiers à exclure pour une interface claire
+        $excludedFolders = @(
+            "Groups", "Functions", "Computers", "Service Accounts", 
+            "Resources", "Contacts", "Distribution Lists", "Security Groups",
+            "Shared Mailboxes", "Room Mailboxes", "Equipment", "Templates",
+            "System", "Builtin", "ForeignSecurityPrincipals", "Managed Service Accounts"
+        )
+        
+        # Récupération des dossiers utilisateur
+        $userOUs = Get-ADOrganizationalUnit -SearchBase $cityBasePath -SearchScope Subtree -Filter * |
+                   Where-Object { $excludedFolders -notcontains $_.Name } |
+                   Sort-Object DistinguishedName
+        
+        if ($userOUs.Count -eq 0) {
+            $noFolderNode = $TreeView.Nodes.Add("Aucun dossier utilisateur disponible")
+            $noFolderNode.Tag = $null
+            $InfoLabel.Text = "Aucun dossier trouvé dans cette ville"
+            return
+        }
+        
+        # Organisation hiérarchique des dossiers
+        $folderDict = @{}
+        foreach ($ou in $userOUs) {
+            $parentDN = ($ou.DistinguishedName -split ',', 2)[1]
+            if (-not $folderDict.ContainsKey($parentDN)) {
+                $folderDict[$parentDN] = @()
+            }
+            $folderDict[$parentDN] += $ou
+        }
+        
+        # Construction de l'arbre avec noms clairs
+        Build-UniformFolderTree $TreeView $null $cityBasePath $folderDict $CurrentUserPath
+        
+        # Expansion automatique du premier niveau
+        foreach ($node in $TreeView.Nodes) {
+            $node.Expand()
+        }
+        
+    } catch {
+        Write-Log "Erreur lors du chargement des dossiers: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur" "Impossible de charger les dossiers: $($_.Exception.Message)"
+    } finally {
+        $TreeView.EndUpdate()
+    }
+}
+
+# Construction récursive de l'arbre 
+function Build-UniformFolderTree {
+    param(
+        [System.Windows.Forms.TreeView]$TreeView,
+        [System.Windows.Forms.TreeNode]$ParentNode,
+        [string]$ParentDN,
+        [hashtable]$FolderDict,
+        [string]$CurrentUserPath
+    )
+    
+    if ($FolderDict.ContainsKey($ParentDN)) {
+        foreach ($ou in ($FolderDict[$ParentDN] | Sort-Object Name)) {
+            # Noms d'affichage clairs et professionnels
+            $displayName = Get-UniformFolderDisplayName $ou.Name
+            
+            # Création du nœud
+            $node = if ($ParentNode) {
+                $ParentNode.Nodes.Add($displayName)
+            } else {
+                $TreeView.Nodes.Add($displayName)
+            }
+            
+            $node.Tag = $ou.DistinguishedName
+            $node.Name = $ou.Name
+            $node.ToolTipText = "Chemin complet : $($ou.DistinguishedName)"
+            
+            # Indication visuelle si c'est l'emplacement actuel
+            if ($ou.DistinguishedName -eq $CurrentUserPath) {
+                $node.Text += " [EMPLACEMENT ACTUEL]"
+                $node.ForeColor = $script:Theme.Primary
+                $node.NodeFont = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            }
+            
+            # Construction récursive des sous-dossiers
+            Build-UniformFolderTree $TreeView $node $ou.DistinguishedName $FolderDict $CurrentUserPath
+        }
+    }
+}
+
+# Noms d'affichage 
+function Get-UniformFolderDisplayName {
+    param([string]$FolderName)
+    
+    switch ($FolderName) {
+        "Administrative" { return "Administrative" }
+        "Commercial" { return "Commercial" }
+        "Technique" { return "Technique" }
+        "Direction" { return "Direction" }
+        "RH" { return "Ressources Humaines" }
+        "IT" { return "Informatique" }
+        "Others" { return "Autres utilisateurs" }
+        "Finance" { return "Finance" }
+        "Marketing" { return "Marketing" }
+        "Support" { return "Support" }
+        "Disable Users" { return "Comptes désactivés" }
+        default { return $FolderName }
+    }
+}
+
+# Exécution du déplacement 
+function Execute-UniformUserMove {
+    param(
+        [Microsoft.ActiveDirectory.Management.ADUser]$User,
+        [string]$TargetPath,
+        [string]$DisplayName,
+        [System.Windows.Forms.Form]$ParentForm
+    )
+    
+    try {
+        $confirmMessage = "CONFIRMATION DE DÉPLACEMENT`n`n" +
+                         "Utilisateur : $($User.GivenName) $($User.Surname) [$($User.SamAccountName)]`n`n" +
+                         "DEPUIS :`n$($User.DistinguishedName)`n`n" +
+                         "VERS :`n$TargetPath`n`n" +
+                         "Dossier de destination : $DisplayName`n`n" +
+                         "Cette action est irréversible. Continuer ?"
+        
+        if (Show-ConfirmDialog $confirmMessage "Confirmation de déplacement") {
+            # NOUVEAU : Sauvegarder la description actuelle avant le déplacement
+            $currentUser = Get-ADUser -Identity $User.SamAccountName -Properties Description -ErrorAction Stop
+            $originalDescription = $currentUser.Description
+            
+            # Exécution du déplacement
+            Move-ADObject -Identity $User.DistinguishedName -TargetPath $TargetPath -ErrorAction Stop
+            
+                    # NOUVEAU : Restaurer la description originale après le déplacement
+            if (-not [string]::IsNullOrEmpty($originalDescription)) {
+                Set-ADUser -Identity $User.SamAccountName -Description $originalDescription -ErrorAction SilentlyContinue
+                Write-Log "Description originale restaurée pour $($User.SamAccountName): $originalDescription" -Level Debug
+            }
+            
+            Write-Log "Utilisateur $($User.SamAccountName) déplacé avec succès vers $TargetPath (description préservée)" -Level Info
+            
+            $successMessage = "DÉPLACEMENT RÉUSSI`n`n" +
+                             "L'utilisateur $($User.GivenName) $($User.Surname) a été déplacé avec succès.`n`n" +
+                             "Nouveau dossier : $DisplayName`n" +
+                             "Nouveau chemin : $TargetPath`n`n" +
+                             "Description AD préservée`n`n" +
+                             "Déplacement effectué le : $(Get-Date -Format "dd/MM/yyyy à HH:mm:ss")`n" +
+                             "Par : $env:USERNAME"
+            
+            Show-InfoMessage $successMessage "Déplacement réussi"
+            
+            # Fermeture du formulaire et rafraîchissement
+            $ParentForm.Close()
+            Show-UserDetails
+        }
+    } catch {
+        Write-Log "Erreur lors du déplacement: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur de déplacement" "Impossible de déplacer l'utilisateur :`n$($_.Exception.Message)"
+    }
+}
+
+# Panneau des ordinateurs avec boutons supplémentaires
+function Initialize-ComputersPanel {
+    try {
+        $script:UIControls.grpComputers = New-Object System.Windows.Forms.GroupBox -Property @{
+            Text = "Ordinateurs actifs sans N° série (Chargement...)"
+            Location = [System.Drawing.Point]::new(15, 365)
+            Size = [System.Drawing.Size]::new(310, 240)
+            BackColor = $script:Theme.Background
+            ForeColor = $script:Theme.Primary
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+            Anchor = 'Top,Left,Bottom'
+        }
+        
+        # Liste des ordinateurs
+        $script:UIControls.lbComputers = New-Object System.Windows.Forms.ListBox -Property @{
+            Location = [System.Drawing.Point]::new(10, 30)
+            Size = [System.Drawing.Size]::new(290, 130)
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            Anchor = 'Top,Left,Right,Bottom'
+            SelectionMode = 'One'
+        }
+        
+        # Double-clic pour modifier le numéro de série
+        $script:UIControls.lbComputers.Add_DoubleClick({
+            try { Show-SerialNumberDialog }
+            catch { Show-ErrorMessage "Erreur" $_.Exception.Message }
+        })
+        
+        # Bouton Actualiser
+        $btnRefresh = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Actualiser"
+            Location = [System.Drawing.Point]::new(10, 170)
+            Size = [System.Drawing.Size]::new(90, 25)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 8, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        # NOUVEAU : Bouton Recherche
+        $btnSearch = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Recherche"
+            Location = [System.Drawing.Point]::new(110, 170)
+            Size = [System.Drawing.Size]::new(90, 25)
+            BackColor = $script:Theme.Secondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 8, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        # Événements
+        $btnRefresh.Add_Click({
+            try { Load-ComputersWithoutSerial }
+            catch { Show-ErrorMessage "Erreur" $_.Exception.Message }
+        })
+        
+        $btnSearch.Add_Click({
+            try { Show-SimpleComputerSearch }
+            catch { Show-ErrorMessage "Erreur" $_.Exception.Message }
+        })
+
+        $script:UIControls.grpComputers.Controls.AddRange(@(
+            $script:UIControls.lbComputers, 
+            $btnRefresh, $btnSearch
+        ))
+        
+        $script:UIControls.Form.Controls.Add($script:UIControls.grpComputers)
+        Load-ComputersWithoutSerial
+        
+        Write-Log "Panneau ordinateurs avec fonctions étendues initialisé" -Level Info
+        return $true
+    } catch {
+        Write-Log "Erreur initialisation panneau ordinateurs: $($_.Exception.Message)" -Level Error
+        return $false
+    }
+}
+
+# Recherche simple d'ordinateurs
+function Show-SimpleComputerSearch {
+    try {
+        # Récupération de la ville sélectionnée
+        $selectedCity = ""
+        if ($script:UIControls.cbCity.SelectedItem) {
+            $selectedCityRaw = $script:UIControls.cbCity.SelectedItem.ToString()
+            $selectedCity = $selectedCityRaw -replace "⭐ ", ""
+        }
+        
+        if ([string]::IsNullOrWhiteSpace($selectedCity)) {
+            Show-InfoMessage "Veuillez d'abord sélectionner une ville dans le menu principal."
+            return
+        }
+        
+        # Création de la fenêtre de recherche
+        $searchForm = New-Object System.Windows.Forms.Form -Property @{
+            Text = "Recherche d'ordinateurs - $selectedCity"
+            Size = [System.Drawing.Size]::new(1000, 700)
+            StartPosition = "CenterParent"
+            FormBorderStyle = 'FixedDialog'
+            MaximizeBox = $false
+            MinimizeBox = $false
+            BackColor = $script:Theme.Background
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+        }
+        
+        # En-tête
+        $headerPanel = New-Object System.Windows.Forms.Panel -Property @{
+            Location = [System.Drawing.Point]::new(15, 15)
+            Size = [System.Drawing.Size]::new(960, 80)
+            BackColor = $script:Theme.Primary
+            BorderStyle = 'None'
+        }
+        
+        $lblTitle = New-Object System.Windows.Forms.Label -Property @{
+            Text = "RECHERCHE D'ORDINATEURS"
+            Location = [System.Drawing.Point]::new(20, 15)
+            Size = [System.Drawing.Size]::new(920, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 14, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.White
+            TextAlign = 'MiddleCenter'
+        }
+        
+        $lblCity = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Ville sélectionnée : $selectedCity"
+            Location = [System.Drawing.Point]::new(20, 45)
+            Size = [System.Drawing.Size]::new(920, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 10)
+            ForeColor = $script:Theme.White
+            TextAlign = 'MiddleCenter'
+        }
+        
+        $headerPanel.Controls.AddRange(@($lblTitle, $lblCity))
+        
+        # Panel de recherche
+        $searchPanel = New-Object System.Windows.Forms.Panel -Property @{
+            Location = [System.Drawing.Point]::new(15, 105)
+            Size = [System.Drawing.Size]::new(960, 120)
+            BackColor = $script:Theme.Light
+            BorderStyle = 'FixedSingle'
+        }
+        
+        # Champ de recherche
+        $lblSearchTerm = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Terme de recherche :"
+            Location = [System.Drawing.Point]::new(20, 20)
+            Size = [System.Drawing.Size]::new(150, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Primary
+            TextAlign = 'MiddleRight'
+        }
+        
+        $txtComputerSearch = New-Object System.Windows.Forms.TextBox -Property @{
+            Location = [System.Drawing.Point]::new(180, 18)
+            Size = [System.Drawing.Size]::new(250, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 10)
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+        }
+        
+        # Boutons de recherche (SANS Auto-Serial)
+        $btnSearchAll = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Rechercher Tout"
+            Location = [System.Drawing.Point]::new(450, 15)
+            Size = [System.Drawing.Size]::new(130, 30)    
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $btnSearchNoSerial = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Sans Numéro Série"
+            Location = [System.Drawing.Point]::new(590, 15)
+            Size = [System.Drawing.Size]::new(130, 30)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        # Filtres
+        $lblFilters = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Filtres :"
+            Location = [System.Drawing.Point]::new(20, 60)
+            Size = [System.Drawing.Size]::new(60, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Text
+        }
+        
+        $chkActiveOnly = New-Object System.Windows.Forms.CheckBox -Property @{
+            Text = "Actifs uniquement"
+            Location = [System.Drawing.Point]::new(90, 60)
+            Size = [System.Drawing.Size]::new(150, 25)
+            Checked = $true
+            Font = [System.Drawing.Font]::new("Segoe UI", 10)
+            ForeColor = $script:Theme.Text
+        }
+        
+        $chkRecentLogon = New-Object System.Windows.Forms.CheckBox -Property @{
+            Text = "Connectés récemment"
+            Location = [System.Drawing.Point]::new(250, 60)
+            Size = [System.Drawing.Size]::new(180, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 10)
+            ForeColor = $script:Theme.Text
+        }
+        
+        $btnClear = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Effacer"
+            Location = [System.Drawing.Point]::new(730, 15)
+            Size = [System.Drawing.Size]::new(80, 30)
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+        }
+        
+        $searchPanel.Controls.AddRange(@(
+            $lblSearchTerm, $txtComputerSearch, $btnSearchAll, 
+            $btnSearchNoSerial, $lblFilters, $chkActiveOnly, $chkRecentLogon, $btnClear
+        ))
+        
+        # Liste des résultats
+        $resultsPanel = New-Object System.Windows.Forms.Panel -Property @{
+            Location = [System.Drawing.Point]::new(15, 235)
+            Size = [System.Drawing.Size]::new(960, 360)
+            BackColor = $script:Theme.White
+            BorderStyle = 'FixedSingle'
+        }
+        
+        $lblResults = New-Object System.Windows.Forms.Label -Property @{
+            Text = "RÉSULTATS DE RECHERCHE"
+            Location = [System.Drawing.Point]::new(10, 10)
+            Size = [System.Drawing.Size]::new(940, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Primary
+            TextAlign = 'MiddleCenter'
+        }
+        
+        # ListView SANS colonne OS
+        $lvResults = New-Object System.Windows.Forms.ListView -Property @{
+            Location = [System.Drawing.Point]::new(10, 40)
+            Size = [System.Drawing.Size]::new(940, 310)
+            View = 'Details'
+            FullRowSelect = $true
+            GridLines = $true
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+        }
+        
+        # Colonnes SANS OS
+        $null = $lvResults.Columns.Add("Nom", 150)
+        $null = $lvResults.Columns.Add("Numéro Série", 120)
+        $null = $lvResults.Columns.Add("Dernière connexion", 130)
+        $null = $lvResults.Columns.Add("État", 80)
+        $null = $lvResults.Columns.Add("Description", 200)
+        $null = $lvResults.Columns.Add("Chemin AD", 250)
+        
+        $resultsPanel.Controls.AddRange(@($lblResults, $lvResults))
+        
+        # Panel d'actions
+        $actionsPanel = New-Object System.Windows.Forms.Panel -Property @{
+            Location = [System.Drawing.Point]::new(15, 605)
+            Size = [System.Drawing.Size]::new(960, 50)
+            BackColor = $script:Theme.Light
+            BorderStyle = 'FixedSingle'
+        }
+        
+        $btnModifySerial = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Modifier Numéro Série"
+            Location = [System.Drawing.Point]::new(20, 10)
+            Size = [System.Drawing.Size]::new(150, 30)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            Enabled = $false
+        }
+        
+        $btnExportResults = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Exporter CSV"
+            Location = [System.Drawing.Point]::new(180, 10)
+            Size = [System.Drawing.Size]::new(130, 30)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $lblResultCount = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Aucune recherche effectuée"
+            Location = [System.Drawing.Point]::new(500, 15)
+            Size = [System.Drawing.Size]::new(300, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Italic)
+            ForeColor = $script:Theme.Text
+        }
+        
+        $btnClose = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Fermer"
+            Location = [System.Drawing.Point]::new(870, 10)
+            Size = [System.Drawing.Size]::new(80, 30)
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+        }
+        
+        # MODIFIÉ : Contrôles SANS Auto-Serial
+        $actionsPanel.Controls.AddRange(@(
+            $btnModifySerial, $btnExportResults, $lblResultCount, $btnClose
+        ))
+        
+        # Événements de recherche
+        $btnSearchAll.Add_Click({
+            Search-ComputersInCityNeutral $selectedCity $txtComputerSearch.Text.Trim() $lvResults $lblResultCount $chkActiveOnly.Checked $chkRecentLogon.Checked "all"
+            $btnModifySerial.Enabled = $false
+        })
+        
+        $btnSearchNoSerial.Add_Click({
+            Search-ComputersInCityNeutral $selectedCity "" $lvResults $lblResultCount $chkActiveOnly.Checked $chkRecentLogon.Checked "noserial"
+            $btnModifySerial.Enabled = $false
+        })
+        
+        $btnClear.Add_Click({
+            $txtComputerSearch.Text = ""
+            $lvResults.Items.Clear()
+            $lblResultCount.Text = "Aucune recherche effectuée"
+            $btnModifySerial.Enabled = $false
+        })
+        
+        # Sélection dans la liste
+        $lvResults.Add_SelectedIndexChanged({
+            $btnModifySerial.Enabled = ($lvResults.SelectedItems.Count -gt 0)
+        })
+        
+        # Double-clic pour modifier le numéro de série
+        $lvResults.Add_DoubleClick({
+            if ($lvResults.SelectedItems.Count -gt 0) {
+                $computerName = $lvResults.SelectedItems[0].Text
+                Show-SerialNumberDialog $computerName
+                # Rafraîchir la recherche après modification
+                if ($txtComputerSearch.Text.Trim() -ne "") {
+                    $btnSearchAll.PerformClick()
+                } else {
+                    $btnSearchNoSerial.PerformClick()
+                }
+            }
+        })
+        
+        # Événements des boutons d'action
+        $btnModifySerial.Add_Click({
+            if ($lvResults.SelectedItems.Count -gt 0) {
+                $computerName = $lvResults.SelectedItems[0].Text
+                Show-SerialNumberDialog $computerName
+                # Rafraîchir la recherche après modification
+                if ($txtComputerSearch.Text.Trim() -ne "") {
+                    $btnSearchAll.PerformClick()
+                } else {
+                    $btnSearchNoSerial.PerformClick()
+                }
+            }
+        })
+        
+        $btnExportResults.Add_Click({
+            Export-ComputerSearchResults $lvResults $selectedCity
+        })
+        
+        $btnClose.Add_Click({
+            $searchForm.Close()
+        })
+        
+        # Recherche par Entrée
+        $txtComputerSearch.Add_KeyDown({
+            if ($_.KeyCode -eq 'Enter') {
+                $btnSearchAll.PerformClick()
+            }
+        })
+        
+        # Ajout des contrôles au formulaire
+        $searchForm.Controls.AddRange(@($headerPanel, $searchPanel, $resultsPanel, $actionsPanel))
+        
+        # Affichage du formulaire
+        $null = $searchForm.ShowDialog()
+        
+    } catch {
+        Write-Log "Erreur lors de l'affichage de la recherche d'ordinateurs: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur" "Impossible d'afficher la fenêtre de recherche: $($_.Exception.Message)"
+    }
+}
+
+function Search-ComputersInCityNeutral {
+    param(
+        [string]$CityName,
+        [string]$SearchTerm,
+        [System.Windows.Forms.ListView]$ListView,
+        [System.Windows.Forms.Label]$CountLabel,
+        [bool]$ActiveOnly,
+        [bool]$RecentLogonOnly,
+        [string]$SearchType
+    )
+    
+    try {
+        $ListView.Items.Clear()
+        $searchBase = "OU=$CityName,$($script:Config.BaseOU)"
+        
+        # Construction du filtre selon le type de recherche
+        $filter = switch ($SearchType) {
+            "all" {
+                if ([string]::IsNullOrWhiteSpace($SearchTerm)) {
+                    if ($ActiveOnly) { "Enabled -eq 'True'" } else { "*" }
+                } else {
+                    if ($ActiveOnly) {
+                        "((Name -like '*$SearchTerm*') -or (SerialNumber -like '*$SearchTerm*') -or (Description -like '*$SearchTerm*')) -and (Enabled -eq 'True')"
+                    } else {
+                        "(Name -like '*$SearchTerm*') -or (SerialNumber -like '*$SearchTerm*') -or (Description -like '*$SearchTerm*')"
+                    }
+                }
+            }
+            "noserial" {
+                if ($ActiveOnly) {
+                    "Enabled -eq 'True'"
+                } else {
+                    "*"
+                }
+            }
+        }
+        
+        # Récupération des ordinateurs
+        $computers = Get-ADComputer -SearchBase $searchBase -Filter $filter -Properties Name, SerialNumber, Description, LastLogonDate, Enabled, DistinguishedName |
+                    Sort-Object Name
+        
+        # Filtrage supplémentaire pour les ordinateurs sans numéro de série
+        if ($SearchType -eq "noserial") {
+            $computers = $computers | Where-Object { 
+                [string]::IsNullOrWhiteSpace($_.SerialNumber) -or 
+                $_.SerialNumber -eq "To be filled by O.E.M." -or 
+                $_.SerialNumber -eq "Default string" -or 
+                $_.SerialNumber -eq "System Serial Number" -or
+                $_.SerialNumber -eq "Not Specified" -or
+                $_.SerialNumber -eq "0" -or
+                $_.SerialNumber.Length -lt 3
+            }
+        }
+        
+        # Filtrage par connexion récente
+        if ($RecentLogonOnly) {
+            $recentDate = (Get-Date).AddDays(-30)
+            $computers = $computers | Where-Object { $_.LastLogonDate -and $_.LastLogonDate -gt $recentDate }
+        }
+        
+        # Limitation des résultats
+        $computers = $computers | Select-Object -First 500
+        
+        # Remplissage de la ListView SANS colonne OS
+        foreach ($computer in $computers) {
+            $item = New-Object System.Windows.Forms.ListViewItem($computer.Name)
+            
+            # Numéro de série
+            $serialNumber = if ([string]::IsNullOrWhiteSpace($computer.SerialNumber) -or 
+                              $computer.SerialNumber -eq "To be filled by O.E.M." -or 
+                              $computer.SerialNumber -eq "Default string") {
+                "MANQUANT"
+            } else {
+                $computer.SerialNumber
+            }
+            $null = $item.SubItems.Add($serialNumber)
+            
+            # Dernière connexion (index 2 au lieu de 3)
+            $lastLogon = if ($computer.LastLogonDate) {
+                $daysDiff = (Get-Date) - $computer.LastLogonDate
+                if ($daysDiff.Days -le 7) {
+                    "RÉCENT - $($computer.LastLogonDate.ToString('dd/MM/yyyy'))"
+                } elseif ($daysDiff.Days -le 30) {
+                    "MOYEN - $($computer.LastLogonDate.ToString('dd/MM/yyyy'))"
+                } else {
+                    "ANCIEN - $($computer.LastLogonDate.ToString('dd/MM/yyyy'))"
+                }
+            } else {
+                "JAMAIS"
+            }
+            $null = $item.SubItems.Add($lastLogon)
+            
+            # État (index 3 au lieu de 4)
+            $status = if ($computer.Enabled) { "ACTIF" } else { "INACTIF" }
+            $null = $item.SubItems.Add($status)
+            
+            # Description (index 4 au lieu de 5)
+            $description = if ($computer.Description) { $computer.Description } else { "Aucune" }
+            $null = $item.SubItems.Add($description)
+            
+            # Chemin AD (index 5 au lieu de 6)
+            $adPath = $computer.DistinguishedName -replace "CN=$($computer.Name),", "" -replace ",DC=.*", ""
+            $null = $item.SubItems.Add($adPath)
+            
+            # Couleur neutre uniquement pour les inactifs
+            if (-not $computer.Enabled) {
+                $item.ForeColor = [System.Drawing.Color]::Gray
+            } else {
+                $item.ForeColor = $script:Theme.Text
+            }
+            
+            $null = $ListView.Items.Add($item)
+        }
+        
+        # Mise à jour du compteur
+        $searchTypeText = switch ($SearchType) {
+            "all" { "tous critères" }
+            "noserial" { "sans numéro de série" }
+        }
+        
+        $CountLabel.Text = "$($computers.Count) ordinateur(s) trouvé(s) ($searchTypeText) dans $CityName"
+        $CountLabel.ForeColor = $script:Theme.Text
+        
+        Write-Log "Recherche d'ordinateurs dans $CityName : $($computers.Count) résultats ($searchTypeText)" -Level Info
+        
+    } catch {
+        Write-Log "Erreur lors de la recherche d'ordinateurs: $($_.Exception.Message)" -Level Error
+        $CountLabel.Text = "Erreur lors de la recherche"
+        $CountLabel.ForeColor = $script:Theme.Text
+        Show-ErrorMessage "Erreur de recherche" "Impossible de rechercher les ordinateurs: $($_.Exception.Message)"
+    }
+}
+
+# Export des résultats de recherche
+function Export-ComputerSearchResults {
+    param(
+        [System.Windows.Forms.ListView]$ListView,
+        [string]$CityName
+    )
+    
+    try {
+        if ($ListView.Items.Count -eq 0) {
+            Show-InfoMessage "Aucun résultat à exporter."
+            return
+        }
+        
+        $saveDialog = New-Object System.Windows.Forms.SaveFileDialog -Property @{
+            Filter = "Fichiers CSV (*.csv)|*.csv"
+            FileName = "Ordinateurs_$CityName_$(Get-Date -Format 'yyyyMMdd_HHmmss').csv"
+            Title = "Exporter les résultats"
+        }
+        
+        if ($saveDialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+            $csvData = @()
+            
+            foreach ($item in $ListView.Items) {
+                $csvData += [PSCustomObject]@{
+                    'Nom' = $item.Text
+                    'Numero_Serie' = $item.SubItems[1].Text -replace " | ", ""
+                    'Derniere_Connexion' = $item.SubItems[2].Text -replace "   | ", ""  
+                    'Etat' = $item.SubItems[3].Text -replace " | ", ""                  
+                    'Description' = $item.SubItems[4].Text                           
+                    'Chemin_AD' = $item.SubItems[5].Text                                
+                    'Ville' = $CityName
+                    'Date_Export' = Get-Date -Format "dd/MM/yyyy HH:mm:ss"
+                }
+            }
+            
+            $csvData | Export-Csv -Path $saveDialog.FileName -NoTypeInformation -Encoding UTF8 -Delimiter ";"
+            
+            Show-InfoMessage "Export réussi !`n`nFichier : $($saveDialog.FileName)`nNombre d'ordinateurs : $($csvData.Count)" "Export terminé"
+            Write-Log "Export CSV réussi : $($saveDialog.FileName) ($($csvData.Count) ordinateurs)" -Level Info
+        }
+        
+    } catch {
+        Write-Log "Erreur lors de l'export CSV: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur d'export" "Impossible d'exporter les résultats: $($_.Exception.Message)"
+    }
+}
+# Interface de gestion en lot d'utilisateurs
+function Show-BulkUserManagement {
+    try {
+        # Récupération de la ville sélectionnée
+        $selectedCity = ""
+        if ($script:UIControls.cbCity.SelectedItem) {
+            $selectedCityRaw = $script:UIControls.cbCity.SelectedItem.ToString()
+            $selectedCity = $selectedCityRaw -replace "⭐ ", ""
+        }
+        
+        $windowTitle = if (-not [string]::IsNullOrWhiteSpace($selectedCity)) {
+            "Gestion en lot d'utilisateurs - $selectedCity"
+        } else {
+            "Gestion en lot d'utilisateurs - Toutes villes"
+        }
+        
+        # Fenêtre principale
+        $bulkForm = New-Object System.Windows.Forms.Form -Property @{
+            Text = $windowTitle
+            Size = [System.Drawing.Size]::new(1200, 800)
+            StartPosition = "CenterParent"
+            FormBorderStyle = 'FixedDialog'
+            MaximizeBox = $false
+            MinimizeBox = $false
+            BackColor = $script:Theme.Background
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+        }
+        
+        # En-tête avec couleurs neutres
+        $headerPanel = New-Object System.Windows.Forms.Panel -Property @{
+            Location = [System.Drawing.Point]::new(15, 15)
+            Size = [System.Drawing.Size]::new(1160, 100)
+            BackColor = $script:Theme.Primary
+            BorderStyle = 'None'
+        }
+        
+        $lblTitle = New-Object System.Windows.Forms.Label -Property @{
+            Text = "GESTION EN LOT D'UTILISATEURS"
+            Location = [System.Drawing.Point]::new(20, 15)
+            Size = [System.Drawing.Size]::new(1120, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 14, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.White
+            TextAlign = 'MiddleCenter'
+        }
+        
+        $lblSubtitle = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Gestion de groupes et désactivation de comptes pour plusieurs utilisateurs"
+            Location = [System.Drawing.Point]::new(20, 45)
+            Size = [System.Drawing.Size]::new(1120, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 10)
+            ForeColor = $script:Theme.White
+            TextAlign = 'MiddleCenter'
+        }
+        
+        # MODIFIÉ : Indicateur de ville en blanc (plus de jaune)
+        $cityIndicator = if (-not [string]::IsNullOrWhiteSpace($selectedCity)) {
+            "Ville sélectionnée : $selectedCity"
+        } else {
+            "Recherche dans toutes les villes"
+        }
+        
+        $lblCityInfo = New-Object System.Windows.Forms.Label -Property @{
+            Text = $cityIndicator
+            Location = [System.Drawing.Point]::new(20, 70)
+            Size = [System.Drawing.Size]::new(1120, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.White 
+            TextAlign = 'MiddleCenter'
+        }
+        
+        $headerPanel.Controls.AddRange(@($lblTitle, $lblSubtitle, $lblCityInfo))
+        
+        # Section sélection d'utilisateurs
+        $userPanel = New-Object System.Windows.Forms.Panel -Property @{
+            Location = [System.Drawing.Point]::new(15, 125)
+            Size = [System.Drawing.Size]::new(570, 380)
+            BackColor = $script:Theme.Light
+            BorderStyle = 'FixedSingle'
+        }
+        
+        $lblUserTitle = New-Object System.Windows.Forms.Label -Property @{
+            Text = "SÉLECTION D'UTILISATEURS"
+            Location = [System.Drawing.Point]::new(15, 15)
+            Size = [System.Drawing.Size]::new(540, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Primary
+            TextAlign = 'MiddleCenter'
+        }
+        
+        # Recherche d'utilisateurs
+        $lblUserSearch = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Rechercher :"
+            Location = [System.Drawing.Point]::new(15, 45)
+            Size = [System.Drawing.Size]::new(80, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Text
+            TextAlign = 'MiddleRight'
+        }
+        
+        $txtUserSearch = New-Object System.Windows.Forms.TextBox -Property @{
+            Location = [System.Drawing.Point]::new(105, 43)
+            Size = [System.Drawing.Size]::new(200, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            BackColor = $script:Theme.White
+        }
+        
+        $btnSearchUsers = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Rechercher"
+            Location = [System.Drawing.Point]::new(315, 42)
+            Size = [System.Drawing.Size]::new(100, 27)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+        }
+        
+        $btnSelectAll = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Tout sélectionner"
+            Location = [System.Drawing.Point]::new(425, 42)
+            Size = [System.Drawing.Size]::new(120, 27)
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 8)
+        }
+        
+        # Liste des utilisateurs avec cases à cocher
+        $lbUsers = New-Object System.Windows.Forms.CheckedListBox -Property @{
+            Location = [System.Drawing.Point]::new(15, 80)
+            Size = [System.Drawing.Size]::new(540, 260)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            BackColor = $script:Theme.White
+            CheckOnClick = $true
+        }
+        
+        $lblUserCount = New-Object System.Windows.Forms.Label -Property @{
+            Text = "0 utilisateur(s) sélectionné(s)"
+            Location = [System.Drawing.Point]::new(15, 350)
+            Size = [System.Drawing.Size]::new(540, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Italic)
+            ForeColor = $script:Theme.Text
+            TextAlign = 'MiddleCenter'
+        }
+        
+        $userPanel.Controls.AddRange(@($lblUserTitle, $lblUserSearch, $txtUserSearch, $btnSearchUsers, $btnSelectAll, $lbUsers, $lblUserCount))
+        
+        # Section gestion des groupes et actions
+        $groupPanel = New-Object System.Windows.Forms.Panel -Property @{
+            Location = [System.Drawing.Point]::new(605, 125)
+            Size = [System.Drawing.Size]::new(570, 380)
+            BackColor = $script:Theme.Light
+            BorderStyle = 'FixedSingle'
+        }
+        
+        $lblGroupTitle = New-Object System.Windows.Forms.Label -Property @{
+            Text = "GESTION DES GROUPES ET ACTIONS"
+            Location = [System.Drawing.Point]::new(15, 15)
+            Size = [System.Drawing.Size]::new(540, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Primary
+            TextAlign = 'MiddleCenter'
+        }
+        
+        # Recherche de groupes
+        $lblGroupSearch = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Rechercher groupe :"
+            Location = [System.Drawing.Point]::new(15, 45)
+            Size = [System.Drawing.Size]::new(120, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Text
+            TextAlign = 'MiddleRight'
+        }
+        
+        $txtGroupSearch = New-Object System.Windows.Forms.TextBox -Property @{
+            Location = [System.Drawing.Point]::new(145, 43)
+            Size = [System.Drawing.Size]::new(200, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            BackColor = $script:Theme.White
+        }
+        
+        $btnSearchGroups = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Rechercher"
+            Location = [System.Drawing.Point]::new(355, 42)
+            Size = [System.Drawing.Size]::new(100, 27)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+        }
+        
+        # Liste des groupes trouvés (taille réduite)
+        $lbGroups = New-Object System.Windows.Forms.ListBox -Property @{
+            Location = [System.Drawing.Point]::new(15, 80)
+            Size = [System.Drawing.Size]::new(540, 140)  # RÉDUIT de 180 à 140
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            BackColor = $script:Theme.White
+            SelectionMode = 'One'
+        }
+        
+        $lblGroupSelected = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Groupe sélectionné : Aucun"
+            Location = [System.Drawing.Point]::new(15, 230)  # AJUSTÉ
+            Size = [System.Drawing.Size]::new(540, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Primary
+        }
+        
+        # MODIFIÉ : Boutons avec couleurs neutres 
+        $btnAddToGroup = New-Object System.Windows.Forms.Button -Property @{
+            Text = "AJOUTER AU GROUPE"
+            Location = [System.Drawing.Point]::new(15, 260)  
+            Size = [System.Drawing.Size]::new(170, 30)
+            BackColor = $script:Theme.ButtonPrimary  
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            Enabled = $false
+        }
+        
+        $btnRemoveFromGroup = New-Object System.Windows.Forms.Button -Property @{
+            Text = "RETIRER DU GROUPE"
+            Location = [System.Drawing.Point]::new(195, 260)  
+            Size = [System.Drawing.Size]::new(170, 30) 
+            BackColor = $script:Theme.ButtonSecondary  
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            Enabled = $false
+        }
+        
+        # NOUVEAU : Bouton de désactivation en lot
+        $btnDisableAccounts = New-Object System.Windows.Forms.Button -Property @{
+            Text = "DÉSACTIVER COMPTES"
+            Location = [System.Drawing.Point]::new(375, 260) 
+            Size = [System.Drawing.Size]::new(170, 30)
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            Enabled = $false
+        }
+        
+        # Séparateur
+        $separator = New-Object System.Windows.Forms.Label -Property @{
+            Location = [System.Drawing.Point]::new(15, 300)
+            Size = [System.Drawing.Size]::new(540, 2)
+            BackColor = $script:Theme.Primary
+        }
+        
+        # Instructions
+        $lblInstructions = New-Object System.Windows.Forms.Label -Property @{
+            Text = "• Sélectionnez des utilisateurs et un groupe pour les actions de groupe`n• Sélectionnez uniquement des utilisateurs pour la désactivation"
+            Location = [System.Drawing.Point]::new(15, 310)
+            Size = [System.Drawing.Size]::new(540, 40)
+            Font = [System.Drawing.Font]::new("Segoe UI", 8, [System.Drawing.FontStyle]::Italic)
+            ForeColor = $script:Theme.Text
+        }
+        
+        $groupPanel.Controls.AddRange(@($lblGroupTitle, $lblGroupSearch, $txtGroupSearch, $btnSearchGroups, $lbGroups, $lblGroupSelected, $btnAddToGroup, $btnRemoveFromGroup, $btnDisableAccounts, $separator, $lblInstructions))
+        
+        # MODIFIÉ : Panel de résultats réduit
+        $resultPanel = New-Object System.Windows.Forms.Panel -Property @{
+            Location = [System.Drawing.Point]::new(15, 515)
+            Size = [System.Drawing.Size]::new(1160, 120)  
+            BackColor = $script:Theme.White
+            BorderStyle = 'FixedSingle'
+        }
+        
+        $lblResultTitle = New-Object System.Windows.Forms.Label -Property @{
+            Text = "RÉSULTATS DES OPÉRATIONS"
+            Location = [System.Drawing.Point]::new(15, 10)
+            Size = [System.Drawing.Size]::new(1130, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Primary
+            TextAlign = 'MiddleCenter'
+        }
+        
+        $txtResults = New-Object System.Windows.Forms.TextBox -Property @{
+            Location = [System.Drawing.Point]::new(15, 35)
+            Size = [System.Drawing.Size]::new(1130, 60)  
+            
+            Font = [System.Drawing.Font]::new("Consolas", 8)
+            BackColor = $script:Theme.Light
+            ForeColor = $script:Theme.Text
+            Multiline = $true
+            ScrollBars = 'Vertical'
+            ReadOnly = $true
+            Text = "Aucune opération effectuée"
+        }
+        
+        $btnClearResults = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Effacer"
+            Location = [System.Drawing.Point]::new(15, 100)  # AJUSTÉ
+            Size = [System.Drawing.Size]::new(80, 20)  # RÉDUIT
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 8)
+        }
+        
+        $btnClose = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Fermer"
+            Location = [System.Drawing.Point]::new(1065, 100)  # AJUSTÉ
+            Size = [System.Drawing.Size]::new(80, 20)  # RÉDUIT
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 8)
+        }
+        
+        $resultPanel.Controls.AddRange(@($lblResultTitle, $txtResults, $btnClearResults, $btnClose))
+        
+        # ÉVÉNEMENTS (inchangés pour les fonctions existantes)
+        $btnSearchUsers.Add_Click({
+            try {
+                Search-BulkUsers $txtUserSearch.Text.Trim() $lbUsers $lblUserCount
+            } catch {
+                Show-ErrorMessage "Erreur de recherche" $_.Exception.Message
+            }
+        })
+        
+        $txtUserSearch.Add_KeyDown({
+            if ($_.KeyCode -eq 'Enter') {
+                try {
+                    Search-BulkUsers $txtUserSearch.Text.Trim() $lbUsers $lblUserCount
+                } catch {
+                    Show-ErrorMessage "Erreur de recherche" $_.Exception.Message
+                }
+            }
+        })
+        
+        $btnSelectAll.Add_Click({
+            try {
+                for ($i = 0; $i -lt $lbUsers.Items.Count; $i++) {
+                    $lbUsers.SetItemChecked($i, $true)
+                }
+                Update-UserSelectionCount $lbUsers $lblUserCount
+                # Activer le bouton de désactivation si des utilisateurs sont sélectionnés
+                $btnDisableAccounts.Enabled = ($lbUsers.CheckedItems.Count -gt 0)
+            } catch {
+                Show-ErrorMessage "Erreur de sélection" $_.Exception.Message
+            }
+        })
+        
+        $lbUsers.Add_ItemCheck({
+            try {
+                $timer = New-Object System.Windows.Forms.Timer
+                $timer.Interval = 50
+                $timer.Add_Tick({
+                    try {
+                        Update-UserSelectionCount $lbUsers $lblUserCount
+                        # Activer/désactiver les boutons selon les sélections
+                        $hasUsers = ($lbUsers.CheckedItems.Count -gt 0)
+                        $hasGroup = ($lbGroups.SelectedItem -ne $null)
+                        
+                        $btnAddToGroup.Enabled = ($hasUsers -and $hasGroup)
+                        $btnRemoveFromGroup.Enabled = ($hasUsers -and $hasGroup)
+                        $btnDisableAccounts.Enabled = $hasUsers
+                        
+                        $timer.Stop()
+                        $timer.Dispose()
+                    } catch {
+                        # Ignore timer errors
+                    }
+                })
+                $timer.Start()
+            } catch {
+                # Ignore event errors
+            }
+        })
+        
+        $btnSearchGroups.Add_Click({
+            try {
+                Search-BulkGroups $txtGroupSearch.Text.Trim() $lbGroups
+            } catch {
+                Show-ErrorMessage "Erreur de recherche de groupes" $_.Exception.Message
+            }
+        })
+        
+        $txtGroupSearch.Add_KeyDown({
+            if ($_.KeyCode -eq 'Enter') {
+                try {
+                    Search-BulkGroups $txtGroupSearch.Text.Trim() $lbGroups
+                } catch {
+                    Show-ErrorMessage "Erreur de recherche de groupes" $_.Exception.Message
+                }
+            }
+        })
+        
+        $lbGroups.Add_SelectedIndexChanged({
+            try {
+                if ($lbGroups.SelectedItem) {
+                    $selectedGroup = $lbGroups.SelectedItem.ToString()
+                    if ($selectedGroup -match '^([^-]+)') {
+                        $groupName = $matches[1].Trim()
+                        $lblGroupSelected.Text = "Groupe sélectionné : $groupName"
+                        $btnAddToGroup.Enabled = ($lbUsers.CheckedItems.Count -gt 0)
+                        $btnRemoveFromGroup.Enabled = ($lbUsers.CheckedItems.Count -gt 0)
+                    }
+                } else {
+                    $lblGroupSelected.Text = "Groupe sélectionné : Aucun"
+                    $btnAddToGroup.Enabled = $false
+                    $btnRemoveFromGroup.Enabled = $false
+                }
+            } catch {
+                # Ignore selection errors
+            }
+        })
+        
+        $btnAddToGroup.Add_Click({
+            try {
+                Execute-BulkGroupOperation $lbUsers $lbGroups $txtResults "add"
+            } catch {
+                Show-ErrorMessage "Erreur d'ajout" $_.Exception.Message
+            }
+        })
+        
+        $btnRemoveFromGroup.Add_Click({
+            try {
+                Execute-BulkGroupOperation $lbUsers $lbGroups $txtResults "remove"
+            } catch {
+                Show-ErrorMessage "Erreur de suppression" $_.Exception.Message
+            }
+        })
+        
+        # NOUVEAU : Événement pour la désactivation en lot
+        $btnDisableAccounts.Add_Click({
+            try {
+                Execute-BulkAccountDisable $lbUsers $txtResults
+            } catch {
+                Show-ErrorMessage "Erreur de désactivation" $_.Exception.Message
+            }
+        })
+        
+        $btnClearResults.Add_Click({
+            try {
+                $txtResults.Text = "Résultats effacés - $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')"
+            } catch {
+                # Ignore clear errors
+            }
+        })
+        
+        $btnClose.Add_Click({
+            try {
+                $bulkForm.Close()
+            } catch {
+                # Ignore close errors
+            }
+        })
+        
+        # Ajout des contrôles au formulaire
+        $bulkForm.Controls.AddRange(@($headerPanel, $userPanel, $groupPanel, $resultPanel))
+        
+        # Affichage du formulaire
+        $null = $bulkForm.ShowDialog()
+        
+    } catch {
+        Write-Log "Erreur lors de l'affichage de la gestion en lot: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur" "Impossible d'afficher la fenêtre de gestion en lot: $($_.Exception.Message)"
+    }
+}
+
+# Recherche d'utilisateurs pour gestion en lot
+function Search-BulkUsers {
+    param(
+        [string]$SearchTerm,
+        [System.Windows.Forms.CheckedListBox]$UserList,
+        [System.Windows.Forms.Label]$CountLabel
+    )
+    
+    try {
+        $UserList.Items.Clear()
+        
+        if ([string]::IsNullOrWhiteSpace($SearchTerm) -or $SearchTerm.Length -lt 2) {
+            Show-InfoMessage "Veuillez saisir au moins 2 caractères pour la recherche."
+            return
+        }
+        
+        # Récupération de la ville sélectionnée dans l'interface principale
+        $selectedCity = ""
+        if ($script:UIControls.cbCity.SelectedItem) {
+            $selectedCityRaw = $script:UIControls.cbCity.SelectedItem.ToString()
+            $selectedCity = $selectedCityRaw -replace "⭐ ", ""
+        }
+        
+        $allUsers = @()
+        
+        if (-not [string]::IsNullOrWhiteSpace($selectedCity)) {
+            # Recherche UNIQUEMENT dans la ville sélectionnée
+            try {
+                $searchBase = "OU=$selectedCity,$($script:Config.BaseOU)"
+                $users = Get-ADUser -SearchBase $searchBase -Filter "GivenName -like '*$SearchTerm*' -or Surname -like '*$SearchTerm*' -or SamAccountName -like '*$SearchTerm*'" -Properties GivenName, Surname, SamAccountName, Enabled, Department, DistinguishedName -ErrorAction Stop |
+                         Where-Object { $_.Enabled -eq $true } |
+                         Sort-Object Surname, GivenName |
+                         Select-Object -First 100
+                
+                foreach ($user in $users) {
+                    $displayName = "$($user.Surname) $($user.GivenName) [$($user.SamAccountName)] - $selectedCity"
+                    if ($user.Department) {
+                        $displayName += " ($($user.Department))"
+                    }
+                    $allUsers += $displayName
+                }
+                
+                Write-Log "Recherche en lot dans $selectedCity : $($users.Count) utilisateurs trouvés pour '$SearchTerm'" -Level Info
+            } catch {
+                Write-Log "Erreur recherche dans $selectedCity : $($_.Exception.Message)" -Level Warning
+                Show-ErrorMessage "Erreur de recherche" "Impossible de rechercher dans la ville $selectedCity : $($_.Exception.Message)"
+                return
+            }
+        } else {
+            # Si aucune ville sélectionnée, recherche dans toutes les villes
+            $cities = @()
+            
+            try {
+                $root = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$($script:Config.BaseOU)")
+                $searcher = New-Object System.DirectoryServices.DirectorySearcher($root)
+                $searcher.Filter = "(objectCategory=organizationalUnit)"
+                $searcher.SearchScope = [System.DirectoryServices.SearchScope]::OneLevel
+                $searcher.PropertiesToLoad.Add("ou") | Out-Null
+                
+                $cities = $searcher.FindAll() | ForEach-Object {
+                    if ($_.Properties["ou"].Count -gt 0) { 
+                        $_.Properties["ou"][0] 
+                    }
+                } | Sort-Object
+                
+                $searcher.Dispose()
+                $root.Dispose()
+            } catch {
+                Write-Log "Erreur lors de la récupération des villes : $($_.Exception.Message)" -Level Error
+                Show-ErrorMessage "Erreur" "Impossible de récupérer la liste des villes : $($_.Exception.Message)"
+                return
+            }
+            
+            # Recherche dans chaque ville avec limitation
+            foreach ($city in $cities) {
+                try {
+                    $searchBase = "OU=$city,$($script:Config.BaseOU)"
+                    $users = Get-ADUser -SearchBase $searchBase -Filter "GivenName -like '*$SearchTerm*' -or Surname -like '*$SearchTerm*' -or SamAccountName -like '*$SearchTerm*'" -Properties GivenName, Surname, SamAccountName, Enabled, Department -ErrorAction Stop |
+                             Where-Object { $_.Enabled -eq $true } |
+                             Sort-Object Surname, GivenName |
+                             Select-Object -First 10  # Limitation par ville
+                    
+                    foreach ($user in $users) {
+                        $displayName = "$($user.Surname) $($user.GivenName) [$($user.SamAccountName)] - $city"
+                        if ($user.Department) {
+                            $displayName += " ($($user.Department))"
+                        }
+                        $allUsers += $displayName
+                    }
+                } catch {
+                    Write-Log "Erreur recherche dans $city : $($_.Exception.Message)" -Level Warning
+                }
+            }
+        }
+        
+        # Tri final par ville puis par nom
+        $allUsers = $allUsers | Sort-Object { 
+            $parts = $_ -split ' - '
+            if ($parts.Count -ge 2) {
+                "$($parts[1])_$($parts[0])"  # Ville_Nom pour tri
+            } else {
+                $_
+            }
+        }
+        
+        # Ajout à la liste
+        foreach ($user in $allUsers) {
+            $UserList.Items.Add($user)
+        }
+        
+        $cityInfo = if (-not [string]::IsNullOrWhiteSpace($selectedCity)) { " dans $selectedCity" } else { " (toutes villes)" }
+        $CountLabel.Text = "$($allUsers.Count) utilisateur(s) trouvé(s)$cityInfo"
+        $CountLabel.ForeColor = if ($allUsers.Count -gt 0) { [System.Drawing.Color]::Green } else { [System.Drawing.Color]::Red }
+        
+    } catch {
+        Write-Log "Erreur lors de la recherche d'utilisateurs en lot: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur de recherche" "Impossible de rechercher les utilisateurs: $($_.Exception.Message)"
+        $CountLabel.Text = "Erreur lors de la recherche"
+        $CountLabel.ForeColor = [System.Drawing.Color]::Red
+    }
+}
+# Recherche de groupes pour gestion en lot
+function Search-BulkGroups {
+    param(
+        [string]$SearchTerm,
+        [System.Windows.Forms.ListBox]$GroupList
+    )
+    
+    try {
+        $GroupList.Items.Clear()
+        
+        if ([string]::IsNullOrWhiteSpace($SearchTerm) -or $SearchTerm.Length -lt 3) {
+            Show-InfoMessage "Veuillez saisir au moins 3 caractères pour la recherche de groupes."
+            return
+        }
+        
+        $groups = Get-ADGroup -Filter "Name -like '*$SearchTerm*'" -Properties Name, Description | 
+                  Sort-Object Name | 
+                  Select-Object -First 50
+        
+        foreach ($group in $groups) {
+            $displayName = if ($group.Description) {
+                "$($group.Name) - $($group.Description)"
+            } else {
+                $group.Name
+            }
+            $GroupList.Items.Add($displayName)
+        }
+        
+        Write-Log "Recherche de groupes : $($groups.Count) groupes trouvés pour '$SearchTerm'" -Level Info
+        
+    } catch {
+        Write-Log "Erreur lors de la recherche de groupes: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur de recherche" "Impossible de rechercher les groupes: $($_.Exception.Message)"
+    }
+}
+
+# Mise à jour du compteur d'utilisateurs sélectionnés
+function Update-UserSelectionCount {
+    param(
+        [System.Windows.Forms.CheckedListBox]$UserList,
+        [System.Windows.Forms.Label]$CountLabel
+    )
+    
+    try {
+        if ($UserList -and $CountLabel) {
+            $checkedCount = $UserList.CheckedItems.Count
+            $CountLabel.Text = "$checkedCount utilisateur(s) sélectionné(s) sur $($UserList.Items.Count)"
+            
+            if ($checkedCount -gt 0) {
+                $CountLabel.ForeColor = [System.Drawing.Color]::Green
+            } else {
+                $CountLabel.ForeColor = $script:Theme.Text
+            }
+        }
+    } catch {
+        Write-Log "Erreur lors de la mise à jour du compteur: $($_.Exception.Message)" -Level Warning
+    }
+}
+
+# Exécution des opérations en lot avec gestion d'erreurs complète
+function Execute-BulkGroupOperation {
+    param(
+        [System.Windows.Forms.CheckedListBox]$UserList,
+        [System.Windows.Forms.ListBox]$GroupList,
+        [System.Windows.Forms.TextBox]$ResultsBox,
+        [string]$Operation
+    )
+    
+    try {
+        if (-not $UserList -or -not $GroupList -or -not $ResultsBox) {
+            Show-ErrorMessage "Erreur de paramètres" "Paramètres manquants pour l'opération en lot."
+            return
+        }
+        
+        if ($UserList.CheckedItems.Count -eq 0) {
+            Show-InfoMessage "Veuillez sélectionner au moins un utilisateur."
+            return
+        }
+        
+        if (-not $GroupList.SelectedItem) {
+            Show-InfoMessage "Veuillez sélectionner un groupe."
+            return
+        }
+        
+        # Extraction sécurisée du nom du groupe
+        $selectedGroup = $GroupList.SelectedItem.ToString()
+        $groupName = ""
+        
+        if ($selectedGroup -match '^([^-]+)') {
+            $groupName = $matches[1].Trim()
+        } else {
+            $groupName = $selectedGroup.Trim()
+        }
+        
+        if ([string]::IsNullOrWhiteSpace($groupName)) {
+            Show-ErrorMessage "Erreur de groupe" "Impossible d'identifier le nom du groupe sélectionné."
+            return
+        }
+        
+        # Vérification de l'existence du groupe
+        try {
+            $null = Get-ADGroup -Identity $groupName -ErrorAction Stop
+        } catch {
+            Show-ErrorMessage "Groupe introuvable" "Le groupe '$groupName' n'existe pas dans Active Directory."
+            return
+        }
+        
+        # Extraction sécurisée des utilisateurs sélectionnés
+        $selectedUsers = @()
+        foreach ($checkedItem in $UserList.CheckedItems) {
+            try {
+                $itemText = $checkedItem.ToString()
+                if ($itemText -match '\[([^\]]+)\]') {
+                    $samAccountName = $matches[1].Trim()
+                    if (-not [string]::IsNullOrWhiteSpace($samAccountName)) {
+                        $selectedUsers += $samAccountName
+                    }
+                }
+            } catch {
+                Write-Log "Erreur lors de l'extraction de l'utilisateur: $itemText" -Level Warning
+            }
+        }
+        
+        if ($selectedUsers.Count -eq 0) {
+            Show-ErrorMessage "Aucun utilisateur valide" "Aucun utilisateur valide n'a pu être extrait de la sélection."
+            return
+        }
+        
+        $operationText = if ($Operation -eq "add") { "AJOUT" } else { "SUPPRESSION" }
+        $actionText = if ($Operation -eq "add") { "ajouter" } else { "retirer" }
+        $preposition = if ($Operation -eq "add") { "au" } else { "du" }
+        
+        $confirmMessage = "$operationText EN LOT`n`n" +
+                         "Vous êtes sur le point de $actionText $($selectedUsers.Count) utilisateur(s) " +
+                         "$preposition groupe '$groupName'.`n`n" +
+                         "Utilisateurs concernés :`n" +
+                         ($selectedUsers | ForEach-Object { "• $_" } | Select-Object -First 10 | Out-String) +
+                         $(if ($selectedUsers.Count -gt 10) { "`n... et $($selectedUsers.Count - 10) autre(s)`n" } else { "" }) +
+                         "`nContinuer ?"
+        
+        if (-not (Show-ConfirmDialog $confirmMessage "Confirmation $operationText")) {
+            return
+        }
+        
+        # Exécution des opérations avec gestion d'erreurs robuste
+        $results = @()
+        $successCount = 0
+        $errorCount = 0
+        $alreadyCount = 0
+        
+        $results += "=== $operationText EN LOT - $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss') ==="
+        $results += "Groupe : $groupName"
+        $results += "Utilisateurs à traiter : $($selectedUsers.Count)"
+        $results += ""
+        
+        foreach ($samAccountName in $selectedUsers) {
+            try {
+                # Vérification de l'existence de l'utilisateur
+                $user = $null
+                try {
+                    $user = Get-ADUser -Identity $samAccountName -ErrorAction Stop
+                } catch {
+                    $results += "ERREUR - $samAccountName : Utilisateur introuvable"
+                    $errorCount++
+                    continue
+                }
+                
+                if ($Operation -eq "add") {
+                    # Vérifier si déjà membre
+                    try {
+                        $currentGroups = Get-ADPrincipalGroupMembership -Identity $samAccountName -ErrorAction Stop | Select-Object -ExpandProperty Name
+                        if ($currentGroups -contains $groupName) {
+                            $results += "DÉJÀ MEMBRE - $samAccountName : Déjà dans le groupe"
+                            $alreadyCount++
+                        } else {
+                            Add-ADGroupMember -Identity $groupName -Members $samAccountName -ErrorAction Stop
+                            $results += "SUCCÈS - $samAccountName : Ajouté au groupe"
+                            $successCount++
+                        }
+                    } catch {
+                        $results += "ERREUR - $samAccountName : $($_.Exception.Message)"
+                        $errorCount++
+                    }
+                } else {
+                    # Opération de suppression
+                    try {
+                        $currentGroups = Get-ADPrincipalGroupMembership -Identity $samAccountName -ErrorAction Stop | Select-Object -ExpandProperty Name
+                        if ($currentGroups -notcontains $groupName) {
+                            $results += "PAS MEMBRE - $samAccountName : N'était pas dans le groupe"
+                            $alreadyCount++
+                        } else {
+                            Remove-ADGroupMember -Identity $groupName -Members $samAccountName -Confirm:$false -ErrorAction Stop
+                            $results += "SUCCÈS - $samAccountName : Retiré du groupe"
+                            $successCount++
+                        }
+                    } catch {
+                        $results += "ERREUR - $samAccountName : $($_.Exception.Message)"
+                        $errorCount++
+                    }
+                }
+            } catch {
+                $results += "ERREUR CRITIQUE - $samAccountName : $($_.Exception.Message)"
+                $errorCount++
+            }
+        }
+        
+        $results += ""
+        $results += "=== RÉSUMÉ ==="
+        $results += "Succès : $successCount"
+        $results += "Déjà traités : $alreadyCount"
+        $results += "Erreurs : $errorCount"
+        $results += "Total traité : $($selectedUsers.Count)"
+        $results += "================================="
+        $results += ""
+        
+        # Affichage des résultats
+        try {
+            $ResultsBox.Text = ($results -join "`r`n")
+        } catch {
+            Write-Log "Erreur lors de l'affichage des résultats" -Level Warning
+        }
+        
+        # Message de fin
+        $summaryMessage = "$operationText TERMINÉ`n`n" +
+                         "Groupe : $groupName`n" +
+                         "Utilisateurs traités : $($selectedUsers.Count)`n" +
+                         "Succès : $successCount`n" +
+                         "Déjà traités : $alreadyCount`n" +
+                         "Erreurs : $errorCount"
+        
+        Show-InfoMessage $summaryMessage "Opération terminée"
+        
+        Write-Log "$operationText en lot terminé - Groupe: $groupName, Succès: $successCount, Déjà traités: $alreadyCount, Erreurs: $errorCount" -Level Info
+        
+    } catch {
+        Write-Log "Erreur lors de l'opération en lot: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur d'opération" "Impossible d'effectuer l'opération en lot: $($_.Exception.Message)"
+    }
+}
+
+# Désactivation en lot des comptes utilisateur, automatique vers Disable Users
+function Execute-BulkAccountDisable {
+    param(
+        [System.Windows.Forms.CheckedListBox]$UserList,
+        [System.Windows.Forms.TextBox]$ResultsBox
+    )
+    
+    try {
+        if (-not $UserList -or -not $ResultsBox) {
+            Show-ErrorMessage "Erreur de paramètres" "Paramètres manquants pour la désactivation en lot."
+            return
+        }
+        
+        if ($UserList.CheckedItems.Count -eq 0) {
+            Show-InfoMessage "Veuillez sélectionner au moins un utilisateur à désactiver."
+            return
+        }
+        
+        # Extraction des utilisateurs sélectionnés avec détection de ville
+        $selectedUsers = @()
+        foreach ($checkedItem in $UserList.CheckedItems) {
+            try {
+                $itemText = $checkedItem.ToString()
+                if ($itemText -match '\[([^\]]+)\].*- ([^(]+)') {
+                    $samAccountName = $matches[1].Trim()
+                    $cityFromDisplay = $matches[2].Trim()
+                    
+                    if (-not [string]::IsNullOrWhiteSpace($samAccountName)) {
+                        $selectedUsers += @{
+                            SamAccountName = $samAccountName
+                            DetectedCity = $cityFromDisplay
+                        }
+                    }
+                }
+            } catch {
+                Write-Log "Erreur lors de l'extraction de l'utilisateur: $itemText" -Level Warning
+            }
+        }
+        
+        if ($selectedUsers.Count -eq 0) {
+            Show-ErrorMessage "Aucun utilisateur valide" "Aucun utilisateur valide n'a pu être extrait de la sélection."
+            return
+        }
+        
+        $confirmMessage = "DÉSACTIVATION EN LOT AVEC DÉPLACEMENT`n`n" +
+                         "Vous êtes sur le point de désactiver $($selectedUsers.Count) compte(s) utilisateur.`n`n" +
+                         "Utilisateurs concernés :`n" +
+                         ($selectedUsers | ForEach-Object { "• $($_.SamAccountName) (ville: $($_.DetectedCity))" } | Select-Object -First 10 | Out-String) +
+                         $(if ($selectedUsers.Count -gt 10) { "`n... et $($selectedUsers.Count - 10) autre(s)`n" } else { "" }) +
+                         "`nCette action va :`n" +
+                         "• Désactiver les comptes`n" +
+                         "• Les déplacer vers 'OU=Disable Users,OU=Others,OU=[Ville],OU=FR,DC=Marche,DC=lan'`n" +
+                         "• Retirer de tous les groupes (sauf Domain Users)`n`n" +
+                         "Continuer ?"
+        
+        if (-not (Show-ConfirmDialog $confirmMessage "Confirmation de désactivation")) {
+            return
+        }
+        
+        # Exécution des désactivations avec déplacement
+        $results = @()
+        $successCount = 0
+        $errorCount = 0
+        $alreadyCount = 0
+        $moveSuccessCount = 0
+        $moveErrorCount = 0
+        $groupsRemovedTotal = 0
+        
+        $results += "=== DÉSACTIVATION EN LOT AVEC DÉPLACEMENT - $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss') ==="
+        $results += "Comptes à traiter : $($selectedUsers.Count)"
+        $results += ""
+        
+        foreach ($userInfo in $selectedUsers) {
+            $samAccountName = $userInfo.SamAccountName
+            $detectedCity = $userInfo.DetectedCity
+            
+            try {
+                # Récupération des informations utilisateur complètes
+                $user = $null
+                try {
+                    $user = Get-ADUser -Identity $samAccountName -Properties Enabled, DistinguishedName, Description, GivenName, Surname -ErrorAction Stop
+                } catch {
+                    $results += "ERREUR - $samAccountName : Utilisateur introuvable"
+                    $errorCount++
+                    continue
+                }
+                
+                # Déterminer la ville d'origine (priorité à la détection depuis DN)
+                $userCity = $detectedCity
+                if ($user.DistinguishedName -match "OU=([^,]+),OU=FR,DC=") {
+                    $cityFromDN = $matches[1]
+                    # Vérifier que cette ville existe dans AD
+                    try {
+                        $root = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$($script:Config.BaseOU)")
+                        $searcher = New-Object System.DirectoryServices.DirectorySearcher($root)
+                        $searcher.Filter = "(&(objectCategory=organizationalUnit)(ou=$cityFromDN))"
+                        $searcher.SearchScope = [System.DirectoryServices.SearchScope]::OneLevel
+                        $result = $searcher.FindOne()
+                        
+                        if ($result) {
+                            $userCity = $cityFromDN
+                        }
+                        
+                        $searcher.Dispose()
+                        $root.Dispose()
+                    } catch {
+                        Write-Log "Erreur lors de la vérification de la ville $cityFromDN" -Level Warning
+                    }
+                }
+                
+                # Construction du chemin de destination
+                $disabledOUPath = "OU=Disable Users,OU=Others,OU=$userCity,OU=FR,DC=Marche,DC=lan"
+                
+                # Vérification de l'existence de l'OU de destination
+                $ouExists = $false
+                try {
+                    $null = Get-ADOrganizationalUnit -Identity $disabledOUPath -ErrorAction Stop
+                    $ouExists = $true
+                } catch {
+                    $results += "ATTENTION - $samAccountName : OU Disable Users introuvable pour $userCity"
+                }
+                
+                # 1. Désactivation du compte
+                if (-not $user.Enabled) {
+                    $results += "DÉJÀ DÉSACTIVÉ - $samAccountName : Compte déjà inactif (ville: $userCity)"
+                    $alreadyCount++
+                } else {
+                    try {
+                        Disable-ADAccount -Identity $samAccountName -ErrorAction Stop
+                        $results += "SUCCÈS DÉSACTIVATION - $samAccountName : Compte désactivé (ville: $userCity)"
+                        $successCount++
+                    } catch {
+                        $results += "ERREUR DÉSACTIVATION - $samAccountName : $($_.Exception.Message)"
+                        $errorCount++
+                        continue  # Passer au suivant si échec de désactivation
+                    }
+                }
+                
+                # 2. Déplacement vers l'OU Disable Users
+                if ($ouExists) {
+                    try {
+                        # Sauvegarder la description originale
+                        $originalDescription = $user.Description
+                        
+                        # Déplacer l'utilisateur
+                        Move-ADObject -Identity $user.DistinguishedName -TargetPath $disabledOUPath -ErrorAction Stop
+                        $results += "SUCCÈS DÉPLACEMENT - $samAccountName : Déplacé vers Disable Users de $userCity"
+                        $moveSuccessCount++
+                        
+                        # Restaurer la description avec retry
+                        if (-not [string]::IsNullOrEmpty($originalDescription)) {
+                            $retryCount = 0
+                            do {
+                                try {
+                                    Start-Sleep -Milliseconds 500
+                                    Set-ADUser -Identity $samAccountName -Description $originalDescription -ErrorAction Stop
+                                    break
+                                } catch {
+                                    $retryCount++
+                                    if ($retryCount -ge 3) {
+                                        $results += "ATTENTION - $samAccountName : Description non restaurée"
+                                        break
+                                    }
+                                    Start-Sleep -Seconds 1
+                                }
+                            } while ($retryCount -lt 3)
+                        }
+                        
+                    } catch {
+                        $results += "ERREUR DÉPLACEMENT - $samAccountName : $($_.Exception.Message)"
+                        $moveErrorCount++
+                    }
+                } else {
+                    $results += "ÉCHEC DÉPLACEMENT - $samAccountName : OU Disable Users inexistante pour $userCity"
+                    $moveErrorCount++
+                }
+                
+                # 3. Suppression des groupes (version sécurisée)
+                $groupsRemoved = 0
+                try {
+                    $userGroups = Get-ADPrincipalGroupMembership -Identity $samAccountName -ErrorAction Stop
+                    foreach ($group in $userGroups) {
+                        if ($group.Name -ne "Domain Users") {
+                            try {
+                                Remove-ADGroupMember -Identity $group.Name -Members $samAccountName -Confirm:$false -ErrorAction Stop
+                                $groupsRemoved++
+                            } catch {
+                                # Ignorer les erreurs de suppression de groupes individuels
+                            }
+                        }
+                    }
+                    
+                    if ($groupsRemoved -gt 0) {
+                        $results += "SUCCÈS GROUPES - $samAccountName : Retiré de $groupsRemoved groupe(s)"
+                        $groupsRemovedTotal += $groupsRemoved
+                    }
+                    
+                } catch {
+                    $results += "ERREUR GROUPES - $samAccountName : Impossible de traiter les groupes"
+                }
+                
+            } catch {
+                $results += "ERREUR CRITIQUE - $samAccountName : $($_.Exception.Message)"
+                $errorCount++
+            }
+        }
+        
+        $results += ""
+        $results += "=== RÉSUMÉ DÉTAILLÉ ==="
+        $results += "DÉSACTIVATION :"
+        $results += "  • Succès : $successCount"
+        $results += "  • Déjà désactivés : $alreadyCount"
+        $results += "  • Erreurs : $errorCount"
+        $results += ""
+        $results += "DÉPLACEMENT :"
+        $results += "  • Succès : $moveSuccessCount"
+        $results += "  • Erreurs : $moveErrorCount"
+        $results += ""
+        $results += "GROUPES :"
+        $results += "  • Total retiré : $groupsRemovedTotal"
+        $results += ""
+        $results += "TOTAL TRAITÉ : $($selectedUsers.Count) utilisateur(s)"
+        $results += "================================="
+        $results += ""
+        
+        # Affichage des résultats
+        try {
+            $ResultsBox.Text = ($results -join "`r`n")
+        } catch {
+            Write-Log "Erreur lors de l'affichage des résultats" -Level Warning
+        }
+        
+        # Message de fin détaillé
+        $summaryMessage = "DÉSACTIVATION EN LOT TERMINÉE`n`n" +
+                         "Comptes traités : $($selectedUsers.Count)`n`n" +
+                         "DÉSACTIVATION :`n" +
+                         "• Succès : $successCount`n" +
+                         "• Déjà désactivés : $alreadyCount`n" +
+                         "• Erreurs : $errorCount`n`n" +
+                         "DÉPLACEMENT :`n" +
+                         "• Vers Disable Users : $moveSuccessCount`n" +
+                         "• Erreurs de déplacement : $moveErrorCount`n`n" +
+                         "GROUPES :`n" +
+                         "• Total retiré : $groupsRemovedTotal"
+        
+        Show-InfoMessage $summaryMessage "Désactivation terminée"
+        
+        Write-Log "Désactivation en lot terminée - Désactivés: $successCount, Déplacés: $moveSuccessCount, Groupes retirés: $groupsRemovedTotal" -Level Info
+        
+    } catch {
+        Write-Log "Erreur lors de la désactivation en lot: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur de désactivation" "Impossible d'effectuer la désactivation en lot: $($_.Exception.Message)"
+    }
+}
+
+# Point d'entrée principal
+try {
+    Write-Log "=== LANCEMENT DE L'APPLICATION DE GESTION AD ===" -Level Info
+    
+    if (Initialize-Application) {
+        Write-Log "Affichage de l'interface utilisateur" -Level Info
+        $script:UIControls.Form.TopMost = $false
+        
+        $script:UIControls.Form.Add_FormClosed({
+            try {
+                if ($script:UIControls.logoBox -and $script:UIControls.logoBox.Image) {
+                    $script:UIControls.logoBox.Image.Dispose()
+                    Write-Log "Ressources du logo libérées" -Level Debug
+                }
+            } catch {
+                # Ignore cleanup errors
+            } 
+        })
+         
+        [void]$script:UIControls.Form.ShowDialog()
+    } else {
+        Write-Log "Échec de l'initialisation de l'application" -Level Er ror
+        exit 1
+    }
+} catch {
+    Write-Log "Erreur fatale: $($_.Exception.Message)" -Level Error
+    Show-ErrorMessage "Erreur fatale" "Une erreur fatale s'est produite: $($_.Exception.Message)"
+    exit 1
+} finally {
+    try {
+        if ($script:UIControls.logoBox -and $script:UIControls.logoBox.Image) {
+            $script:UIControls.logoBox.Image.Dispose()
+        }
+    } catch {
+        # Ignore cleanup errors
+    }
+ 
+    Write-Log "=== FIN DE L'EXÉCUTION ===" -Level Info
+}

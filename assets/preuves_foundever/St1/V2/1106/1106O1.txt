@@ -1,0 +1,256 @@
+# FONCTION CORRIGÉE : Déplacement d'utilisateur avec interface complète
+function Move-UserToOU {
+    try {
+        if (-not $script:UIControls.lbUsers.SelectedItem) {
+            Show-InfoMessage "Veuillez sélectionner un utilisateur."
+            return
+        }
+        
+        $selectedText = $script:UIControls.lbUsers.SelectedItem.ToString()
+        if ($selectedText -match '\[([^\]]+)\]') {
+            $samAccountName = $matches[1]
+        } else {
+            Show-ErrorMessage "Erreur" "Impossible d'identifier l'utilisateur sélectionné."
+            return
+        }
+        
+        # Récupération des informations utilisateur
+        $user = Get-ADUser -Identity $samAccountName -Properties DistinguishedName, GivenName, Surname -ErrorAction Stop
+        
+        # Récupération de la ville sélectionnée dans l'interface
+        $selectedCityRaw = $script:UIControls.cbCity.SelectedItem.ToString()
+        $selectedCity = $selectedCityRaw -replace "⭐ ", ""
+        
+        # Créer le formulaire de déplacement
+        $moveForm = New-Object System.Windows.Forms.Form -Property @{
+            Text = "Déplacer l'utilisateur"
+            Size = [System.Drawing.Size]::new(600, 450)
+            StartPosition = "CenterParent"
+            FormBorderStyle = 'FixedDialog'
+            MaximizeBox = $false
+            MinimizeBox = $false
+            BackColor = $script:Theme.Background
+        }
+        
+        $lblTitle = New-Object System.Windows.Forms.Label -Property @{
+            Text = "DÉPLACEMENT D'UTILISATEUR"
+            Location = [System.Drawing.Point]::new(20, 20)
+            Size = [System.Drawing.Size]::new(550, 30)
+            Font = [System.Drawing.Font]::new("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Primary
+            TextAlign = 'MiddleCenter'
+        }
+        
+        $lblUser = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Utilisateur : $($user.GivenName) $($user.Surname) [$samAccountName]"
+            Location = [System.Drawing.Point]::new(20, 60)
+            Size = [System.Drawing.Size]::new(550, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            ForeColor = $script:Theme.Text
+            TextAlign = 'MiddleCenter'
+        }
+        
+        $lblCurrentPath = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Emplacement actuel :"
+            Location = [System.Drawing.Point]::new(20, 90)
+            Size = [System.Drawing.Size]::new(150, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Text
+        }
+        
+        $txtCurrentPath = New-Object System.Windows.Forms.TextBox -Property @{
+            Text = $user.DistinguishedName
+            Location = [System.Drawing.Point]::new(20, 115)
+            Size = [System.Drawing.Size]::new(550, 25)
+            ReadOnly = $true
+            BackColor = $script:Theme.Light
+            Font = [System.Drawing.Font]::new("Segoe UI", 8)
+        }
+        
+        $lblCity = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Ville de destination :"
+            Location = [System.Drawing.Point]::new(20, 155)
+            Size = [System.Drawing.Size]::new(150, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Text
+        }
+        
+        $cbDestinationCity = New-Object System.Windows.Forms.ComboBox -Property @{
+            Location = [System.Drawing.Point]::new(180, 153)
+            Width = 200
+            DropDownStyle = 'DropDownList'
+            BackColor = $script:Theme.White
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+        }
+        
+        # Charger les villes disponibles
+        try {
+            $root = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$($script:Config.BaseOU)")
+            $searcher = New-Object System.DirectoryServices.DirectorySearcher($root)
+            $searcher.Filter = "(objectCategory=organizationalUnit)"
+            $searcher.SearchScope = [System.DirectoryServices.SearchScope]::OneLevel
+            $searcher.PropertiesToLoad.Add("ou") | Out-Null
+            
+            $cities = $searcher.FindAll() | ForEach-Object {
+                if ($_.Properties["ou"].Count -gt 0) { 
+                    $_.Properties["ou"][0] 
+                }
+            } | Sort-Object
+            
+            foreach ($city in $cities) {
+                $cbDestinationCity.Items.Add($city)
+            }
+            
+            # Sélectionner la ville actuelle par défaut
+            if ($cbDestinationCity.Items.Contains($selectedCity)) {
+                $cbDestinationCity.SelectedItem = $selectedCity
+            }
+        } catch {
+            Write-Log "Erreur lors du chargement des villes: $($_.Exception.Message)" -Level Warning
+        }
+        
+        $lblOU = New-Object System.Windows.Forms.Label -Property @{
+            Text = "OU de destination :"
+            Location = [System.Drawing.Point]::new(20, 190)
+            Size = [System.Drawing.Size]::new(150, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Text
+        }
+        
+        $lbDestinationOUs = New-Object System.Windows.Forms.ListBox -Property @{
+            Location = [System.Drawing.Point]::new(20, 215)
+            Size = [System.Drawing.Size]::new(550, 120)
+            BackColor = $script:Theme.White
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            SelectionMode = 'One'
+        }
+        
+        # Fonction pour charger les OUs d'une ville
+        $loadOUsForCity = {
+            param($cityName)
+            
+            $lbDestinationOUs.Items.Clear()
+            
+            if ([string]::IsNullOrWhiteSpace($cityName)) {
+                return
+            }
+            
+            try {
+                $cityBase = "OU=$cityName,$($script:Config.BaseOU)"
+                $cityRoot = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$cityBase")
+                $citySearcher = New-Object System.DirectoryServices.DirectorySearcher($cityRoot)
+                $citySearcher.Filter = "(objectCategory=organizationalUnit)"
+                $citySearcher.SearchScope = [System.DirectoryServices.SearchScope]::Subtree
+                $citySearcher.PropertiesToLoad.Add("distinguishedName") | Out-Null
+                
+                $ous = $citySearcher.FindAll() | ForEach-Object {
+                    $_.Properties["distinguishedName"][0]
+                } | Sort-Object
+                
+                # Ajouter l'OU racine de la ville
+                $lbDestinationOUs.Items.Add("OU=$cityName,$($script:Config.BaseOU)")
+                
+                # Ajouter les sous-OUs
+                foreach ($ou in $ous) {
+                    if ($ou -ne "OU=$cityName,$($script:Config.BaseOU)") {
+                        $lbDestinationOUs.Items.Add($ou)
+                    }
+                }
+                
+                Write-Log "Chargé $($lbDestinationOUs.Items.Count) OUs pour la ville $cityName" -Level Debug
+                
+            } catch {
+                Write-Log "Erreur lors du chargement des OUs pour $cityName : $($_.Exception.Message)" -Level Warning
+                $lbDestinationOUs.Items.Add("Erreur de chargement des OUs")
+            }
+        }
+        
+        # Événement de changement de ville
+        $cbDestinationCity.Add_SelectedIndexChanged({
+            if ($cbDestinationCity.SelectedItem) {
+                & $loadOUsForCity $cbDestinationCity.SelectedItem.ToString()
+            }
+        })
+        
+        # Charger les OUs de la ville sélectionnée par défaut
+        if ($cbDestinationCity.SelectedItem) {
+            & $loadOUsForCity $cbDestinationCity.SelectedItem.ToString()
+        }
+        
+        $btnMove = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Déplacer"
+            Location = [System.Drawing.Point]::new(380, 360)
+            Size = [System.Drawing.Size]::new(100, 35)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $btnCancel = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Annuler"
+            Location = [System.Drawing.Point]::new(490, 360)
+            Size = [System.Drawing.Size]::new(80, 35)
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+        }
+        
+        $btnMove.Add_Click({
+            try {
+                if (-not $lbDestinationOUs.SelectedItem) {
+                    Show-InfoMessage "Veuillez sélectionner une OU de destination."
+                    return
+                }
+                
+                $destinationOU = $lbDestinationOUs.SelectedItem.ToString()
+                
+                if ($destinationOU -eq $user.DistinguishedName) {
+                    Show-InfoMessage "L'utilisateur est déjà dans cette OU."
+                    return
+                }
+                
+                $confirmMessage = "CONFIRMATION DE DÉPLACEMENT`n`n" +
+                                 "Utilisateur : $($user.GivenName) $($user.Surname)`n" +
+                                 "De : $($user.DistinguishedName)`n" +
+                                 "Vers : $destinationOU`n`n" +
+                                 "Confirmer le déplacement ?"
+                
+                if (-not (Show-ConfirmDialog $confirmMessage "Confirmation de déplacement")) {
+                    return
+                }
+                
+                # DÉPLACEMENT RÉEL avec Move-ADObject
+                Move-ADObject -Identity $user.DistinguishedName -TargetPath $destinationOU -ErrorAction Stop
+                
+                Write-Log "Utilisateur $samAccountName déplacé vers $destinationOU" -Level Info
+                
+                # Mise à jour du chemin dans l'interface
+                if ($script:UIControls.detail["Path"]) {
+                    $newDN = "CN=$($user.GivenName) $($user.Surname),$destinationOU"
+                    $script:UIControls.detail["Path"].Text = $newDN
+                }
+                
+                Show-InfoMessage "DÉPLACEMENT RÉUSSI`n`nL'utilisateur $($user.GivenName) $($user.Surname) a été déplacé avec succès vers :`n$destinationOU`n`nDéplacement effectué le : $(Get-Date -Format "dd/MM/yyyy à HH:mm:ss")" "Déplacement réussi"
+                
+                $moveForm.Close()
+                
+            } catch {
+                Write-Log "Erreur lors du déplacement: $($_.Exception.Message)" -Level Error
+                Show-ErrorMessage "Erreur de déplacement" "Impossible de déplacer l'utilisateur: $($_.Exception.Message)"
+            }
+        })
+        
+        $btnCancel.Add_Click({
+            $moveForm.Close()
+        })
+        
+        $moveForm.Controls.AddRange(@($lblTitle, $lblUser, $lblCurrentPath, $txtCurrentPath, $lblCity, $cbDestinationCity, $lblOU, $lbDestinationOUs, $btnMove, $btnCancel))
+        
+        $moveForm.ShowDialog()
+        
+    } catch {
+        Write-Log "Erreur lors de l'ouverture du déplacement: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur" "Impossible d'ouvrir la fenêtre de déplacement: $($_.Exception.Message)"
+    }
+}

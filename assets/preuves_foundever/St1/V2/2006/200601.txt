@@ -1,0 +1,242 @@
+# Fonction de validation AD avec retry et détection automatique du domaine
+function Test-ADConnection {
+    param([int]$MaxRetries = $script:Config.MaxRetries)
+    
+    for ($i = 1; $i -le $MaxRetries; $i++) {
+        try {
+            $domain = Get-ADDomain -ErrorAction Stop
+            Write-Log "Connexion AD réussie au domaine: $($domain.DNSRoot)" -Level Info
+            
+            # NOUVEAU : Mise à jour automatique du BaseOU si pas encore défini
+            if ([string]::IsNullOrWhiteSpace($script:Config.BaseOU)) {
+                $domainComponents = $domain.DistinguishedName
+                
+                # Recherche automatique du conteneur principal des villes
+                try {
+                    $rootSearcher = New-Object System.DirectoryServices.DirectorySearcher
+                    $rootSearcher.SearchRoot = New-Object System.DirectoryServices.DirectoryEntry("LDAP://$domainComponents")
+                    $rootSearcher.Filter = "(objectCategory=organizationalUnit)"
+                    $rootSearcher.SearchScope = [System.DirectoryServices.SearchScope]::Subtree
+                    $rootSearcher.PropertiesToLoad.Add("distinguishedName") | Out-Null
+                    
+                    $allOUs = $rootSearcher.FindAll()
+                    
+                    # Chercher le conteneur qui contient le plus d'OUs de villes
+                    $candidateContainers = @{}
+                    
+                    foreach ($ou in $allOUs) {
+                        $dn = $ou.Properties["distinguishedname"][0]
+                        if ($dn -notmatch "CN=|OU=Domain Controllers|OU=Microsoft Exchange") {
+                            $parentDN = ($dn -split ',', 2)[1]
+                            if ($parentDN -and $parentDN -ne $domainComponents) {
+                                if (-not $candidateContainers.ContainsKey($parentDN)) {
+                                    $candidateContainers[$parentDN] = 0
+                                }
+                                $candidateContainers[$parentDN]++
+                            }
+                        }
+                    }
+                    
+                    # Sélectionner le conteneur avec le plus d'OUs
+                    $bestContainer = $candidateContainers.GetEnumerator() | Sort-Object Value -Descending | Select-Object -First 1
+                    
+                    if ($bestContainer -and $bestContainer.Value -gt 1) {
+                        $script:Config.BaseOU = $bestContainer.Key
+                        Write-Log "BaseOU détecté automatiquement : $($script:Config.BaseOU)" -Level Info
+                    } else {
+                        # Fallback : utiliser le domaine racine
+                        $script:Config.BaseOU = $domainComponents
+                        Write-Log "BaseOU défini sur le domaine racine : $($script:Config.BaseOU)" -Level Warning
+                    }
+                    
+                } catch {
+                    # Fallback d'urgence
+                    $script:Config.BaseOU = $domainComponents
+                    Write-Log "Erreur détection BaseOU, utilisation domaine racine : $($script:Config.BaseOU)" -Level Warning
+                }
+            }
+            
+            # Vérification que le BaseOU est accessible
+            if ($script:Config.BaseOU) {
+                try {
+                    $null = Get-ADOrganizationalUnit -Identity $script:Config.BaseOU -ErrorAction Stop
+                    Write-Log "BaseOU confirmé accessible : $($script:Config.BaseOU)" -Level Info
+                } catch {
+                    Write-Log "BaseOU non accessible, utilisation domaine racine" -Level Warning
+                    $script:Config.BaseOU = $domain.DistinguishedName
+                }
+            }
+            
+            return $true
+        } catch {
+            Write-Log "Tentative $i/$MaxRetries - Erreur de connexion AD: $($_.Exception.Message)" -Level Warning
+            if ($i -lt $MaxRetries) {
+                Start-Sleep -Seconds 2
+            }
+        }
+    }
+    return $false
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function Load-ComputersWithoutSerial {
+    try {
+        $script:UIControls.lbComputers.Items.Clear()
+        
+        # Vérification que BaseOU est défini
+        if ([string]::IsNullOrWhiteSpace($script:Config.BaseOU)) {
+            $script:UIControls.lbComputers.Items.Add("Configuration AD en cours...")
+            $script:UIControls.grpComputers.Text = "PC sans N° série - Configuration"
+            
+            # Tentative de reconfiguration
+            if (Test-ADConnection) {
+                # Relancer le chargement après configuration
+                Load-ComputersWithoutSerial
+                return
+            } else {
+                $script:UIControls.lbComputers.Items.Clear()
+                $script:UIControls.lbComputers.Items.Add("Erreur de configuration AD")
+                $script:UIControls.grpComputers.Text = "PC sans N° série - Erreur"
+                return
+            }
+        }
+        
+        $selectedCity = ""
+        if ($script:UIControls.cbCity.SelectedItem) {
+            $selectedCityRaw = $script:UIControls.cbCity.SelectedItem.ToString()
+            $selectedCity = $selectedCityRaw -replace "⭐ ", ""
+        }
+        
+        if ([string]::IsNullOrWhiteSpace($selectedCity)) {
+            $script:UIControls.lbComputers.Items.Add("Veuillez sélectionner une ville")
+            $script:UIControls.grpComputers.Text = "PC sans N° série"
+            return
+        }
+        
+        $searchBase = "OU=$selectedCity,$($script:Config.BaseOU)"
+        
+        try {
+            $null = Get-ADOrganizationalUnit -Identity $searchBase -ErrorAction Stop
+        } catch {
+            $script:UIControls.lbComputers.Items.Add("Ville introuvable : $selectedCity")
+            $script:UIControls.grpComputers.Text = "PC sans N° série - Erreur"
+            Write-Log "OU introuvable : $searchBase" -Level Warning
+            return
+        }
+        
+        # Recherche améliorée avec détection des numéros de série invalides
+        $computers = Get-ADComputer -SearchBase $searchBase -Filter "Enabled -eq 'True'" -Properties Name, SerialNumber, Description, OperatingSystem, LastLogonDate |
+                    Where-Object { 
+                        [string]::IsNullOrWhiteSpace($_.SerialNumber) -or 
+                        $_.SerialNumber -eq "To be filled by O.E.M." -or 
+                        $_.SerialNumber -eq "Default string" -or 
+                        $_.SerialNumber -eq "System Serial Number" -or
+                        $_.SerialNumber -eq "Not Specified" -or
+                        $_.SerialNumber -eq "0" -or
+                        $_.SerialNumber.Length -lt 3
+                    } |
+                    Sort-Object Name |
+                    Select-Object -First 100
+        
+        if ($computers.Count -eq 0) {
+            $script:UIControls.lbComputers.Items.Add("Tous les PC ont un N° série valide")
+        } else {
+            foreach ($computer in $computers) {
+                $displayName = $computer.Name
+                
+                if (-not [string]::IsNullOrWhiteSpace($computer.OperatingSystem)) {
+                    $osShort = $computer.OperatingSystem -replace "Microsoft Windows ", "Win"
+                    $displayName += " [$osShort]"
+                }
+                
+                if ($computer.LastLogonDate -and $computer.LastLogonDate -gt (Get-Date).AddDays(-7)) {
+                    $displayName += " [RECENT]"
+                } else {
+                    $displayName += " [ACTIF]"
+                }
+                
+                $script:UIControls.lbComputers.Items.Add($displayName)
+            }
+        }
+        
+        $script:UIControls.grpComputers.Text = "PC sans N° série ($($computers.Count))"
+        Write-Log "Chargement terminé : $($computers.Count) ordinateurs sans série dans $selectedCity" -Level Info
+        
+    } catch {
+        Write-Log "Erreur lors du chargement des ordinateurs: $($_.Exception.Message)" -Level Error
+        $script:UIControls.lbComputers.Items.Clear()
+        $script:UIControls.lbComputers.Items.Add("Erreur de chargement - Voir logs")
+        $script:UIControls.grpComputers.Text = "PC sans N° série - Erreur"
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function Initialize-Application {
+    try {
+        Write-Log "=== DÉMARRAGE DE L'APPLICATION ===" -Level Info
+        Write-Log "Version PowerShell: $($PSVersionTable.PSVersion)" -Level Info
+        Write-Log "Utilisateur: $env:USERNAME" -Level Info
+        Write-Log "Ordinateur: $env:COMPUTERNAME" -Level Info
+        
+        # NOUVEAU : Test de connexion avec initialisation automatique du domaine
+        if (-not (Test-ADConnection)) {
+            Show-ErrorMessage "Connexion AD impossible" "Impossible de se connecter à Active Directory. Vérifiez votre connexion réseau et vos permissions."
+            return $false
+        }
+        
+        if (-not (Initialize-MainForm)) { return $false }
+        if (-not (Initialize-SearchControls)) { return $false }
+        if (-not (Initialize-UserList)) { return $false }
+        if (-not (Initialize-ComputersPanel)) { return $false }  
+        if (-not (Initialize-DetailsPanel)) { return $false }
+        if (-not (Initialize-GroupsPanel)) { return $false }
+        
+        if (-not (Load-Cities)) { return $false }
+        
+        Write-Log "Application initialisée avec succès (avec détection automatique du domaine)" -Level Info
+        return $true
+        
+    } catch {
+        Write-Log "Erreur critique lors de l'initialisation: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur d'initialisation" "Impossible d'initialiser l'application: $($_.Exception.Message)"
+        return $false
+    }
+}

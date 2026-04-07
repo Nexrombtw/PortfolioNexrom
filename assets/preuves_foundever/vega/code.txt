@@ -1,0 +1,399 @@
+#region Initialisation et Utilitaires
+Add-Type -AssemblyName System.Windows.Forms
+Import-Module ActiveDirectory
+
+# --- Configuration de la persistance (ville favorite) ---
+$configDir = Join-Path $env:APPDATA "InfoADScriptSettings_User"
+$configFile = Join-Path $configDir "settings.json"
+
+if (-not (Test-Path $configDir)) {
+    New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+}
+
+# Fonctions utilitaires pour génerer des chiffres aléatoire 
+function Get-RandomCode {
+    $length = Get-Random -Minimum 4 -Maximum 7
+    -join ((0..9) | Get-Random -Count $length)
+}
+
+# Fonction pour normaliser le TERME DE RECHERCHE UTILISATEUR UNIQUEMENT
+function Remove-Accents {
+    param([string]$TextToNormalize)
+    if (-not $TextToNormalize) { return "" }
+    $normalized = $TextToNormalize.Normalize([System.Text.NormalizationForm]::FormD)
+    ($normalized.ToCharArray() | Where-Object { [System.Globalization.CharUnicodeInfo]::GetUnicodeCategory($_) -ne 'NonSpacingMark' }) -join ''
+}
+
+function Load-FavoriteCity {
+    if (Test-Path $configFile) {
+        try {
+            $config = Get-Content $configFile -Raw | ConvertFrom-Json
+            if ($config -and $config.PSObject.Properties.Name -contains 'FavoriteCity') {
+                return $config.FavoriteCity # Nom brut de la ville/OU (avec accents)
+            }
+        } catch { Write-Warning "Erreur lecture config ville fav: $($_.Exception.Message)" } 
+    }
+    return $null
+}
+
+function Save-FavoriteCity {
+    param([string]$City) # Nom brut de la ville/OU (avec accents)
+    $config = @{ FavoriteCity = $City }
+    try {
+        $config | ConvertTo-Json -Depth 1 | Set-Content -Path $configFile -Force
+    } catch { Write-Warning "Erreur sauvegarde config ville fav: $($_.Exception.Message)" } 
+}
+#endregion
+
+#region Définition des Thèmes UI
+$dark = @{ Back = [System.Drawing.Color]::FromArgb(30,30,35); Text = [System.Drawing.Color]::WhiteSmoke; Accent = [System.Drawing.Color]::WhiteSmoke; Btn = [System.Drawing.Color]::FromArgb(70,70,80); BtnText = [System.Drawing.Color]::White; Box = [System.Drawing.Color]::FromArgb(38,38,50); List = [System.Drawing.Color]::FromArgb(38,38,50) }
+$light = @{ Back = [System.Drawing.Color]::White; Text = [System.Drawing.Color]::Black; Accent = [System.Drawing.Color]::Black; Btn = [System.Drawing.Color]::FromArgb(200,200,200); BtnText = [System.Drawing.Color]::Black; Box = [System.Drawing.Color]::White; List = [System.Drawing.Color]::White }
+$script:theme = $dark
+#endregion
+
+#region Initialisation du Formulaire Principal
+$form = New-Object System.Windows.Forms.Form
+$form.Text = "Information Active Directory"; $form.Size = New-Object System.Drawing.Size(1300, 600)
+$form.StartPosition = "CenterScreen"; $form.BackColor = $script:theme.Back
+#endregion
+
+#region Contrôles UI - Section Supérieure (Recherche, Ville, Favori)
+# --- Barre de recherche utilisateur ---
+$lblRecherche = New-Object System.Windows.Forms.Label; $lblRecherche.Text = "Rechercher :"; $lblRecherche.Location = New-Object System.Drawing.Point(40,25); $lblRecherche.ForeColor = $script:theme.Text; $lblRecherche.AutoSize = $true; $form.Controls.Add($lblRecherche)
+$txtRecherche = New-Object System.Windows.Forms.TextBox; $txtRecherche.Location = New-Object System.Drawing.Point(140,22); $txtRecherche.Width = 200; $txtRecherche.Height = 25; $txtRecherche.BackColor = $script:theme.Box; $txtRecherche.ForeColor = $script:theme.Text; $form.Controls.Add($txtRecherche)
+$btnRecherche = New-Object System.Windows.Forms.Button; $btnRecherche.Text = "=>"; $btnRecherche.Location = New-Object System.Drawing.Point(350,20); $btnRecherche.Width = 40; $btnRecherche.Height = 25; $btnRecherche.BackColor = $script:theme.Btn; $btnRecherche.ForeColor = $script:theme.BtnText; $form.Controls.Add($btnRecherche)
+$comboUsers = New-Object System.Windows.Forms.ComboBox; $comboUsers.Location = New-Object System.Drawing.Point(400,22); $comboUsers.Width = 250; $comboUsers.Height = 25; $comboUsers.DropDownStyle = "DropDownList"; $comboUsers.BackColor = $script:theme.List; $comboUsers.ForeColor = $script:theme.Text; $form.Controls.Add($comboUsers)
+
+# --- Sélection de la ville ---
+$lblVille = New-Object System.Windows.Forms.Label; $lblVille.Text = "Ville :"; $lblVille.Location = New-Object System.Drawing.Point(670,25); $lblVille.ForeColor = $script:theme.Text; $lblVille.AutoSize = $true; $form.Controls.Add($lblVille)
+$comboVille = New-Object System.Windows.Forms.ComboBox; $comboVille.Location = New-Object System.Drawing.Point(740,22); $comboVille.Width = 180; $comboVille.Height = 25; $comboVille.DropDownStyle = "DropDownList"; $comboVille.BackColor = $script:theme.List; $comboVille.ForeColor = $script:theme.Text
+
+# Remplissage de la ComboBox des villes
+$ouBase = "OU=FR,DC=Marche,DC=lan" # OU parente des villes. À ADAPTER.
+try {
+    $villes = Get-ADOrganizationalUnit -SearchBase $ouBase -SearchScope OneLevel -Filter * | Select-Object -ExpandProperty Name | Sort-Object
+    foreach ($ville in $villes) {
+        # MODIFICATION: Ajouter le nom brut de la ville (avec accents)
+        $comboVille.Items.Add($ville) 
+    }
+} catch {
+    [System.Windows.Forms.MessageBox]::Show("Impossible de trouver l'OU des villes.`nVérifiez le chemin : $ouBase")
+}
+$form.Controls.Add($comboVille)
+
+# --- Bouton Favori ---
+$btnFavori = New-Object System.Windows.Forms.Button; $btnFavori.Text = "Favori"; $btnFavori.Location = New-Object System.Drawing.Point(930,20); $btnFavori.Width = 70; $btnFavori.Height = 25; $btnFavori.BackColor = [System.Drawing.Color]::FromArgb(70,70,80); $btnFavori.ForeColor = $script:theme.BtnText; $form.Controls.Add($btnFavori)
+
+# MODIFICATION: $lblVilleFav (pour "Ville favorite : XXX") est supprimé.
+# Les lignes suivantes de votre paste.txt sont enlevées:
+# $lblVilleFav = New-Object System.Windows.Forms.Label
+# $lblVilleFav.Text = ""
+# $lblVilleFav.Location = New-Object System.Drawing.Point(1035,18) 
+# ... (autres propriétés et ajout au formulaire)
+#endregion
+
+#region Contrôles UI - Boutons Thème et Barre Path
+$btnDark = New-Object System.Windows.Forms.Button; $btnDark.Text = "Dark Mode"; $btnDark.Location = New-Object System.Drawing.Point(1020,60); $btnDark.Width = 120; $btnDark.Height = 25; $btnDark.BackColor = $dark.Btn; $btnDark.ForeColor = $dark.BtnText; $form.Controls.Add($btnDark)
+$btnLight = New-Object System.Windows.Forms.Button; $btnLight.Text = "Light Mode"; $btnLight.Location = New-Object System.Drawing.Point(1150,60); $btnLight.Width = 120; $btnLight.Height = 25; $btnLight.BackColor = $light.Btn; $btnLight.ForeColor = $light.BtnText; $form.Controls.Add($btnLight)
+
+$lblPath = New-Object System.Windows.Forms.Label; $lblPath.Text = "Path :"; $lblPath.Location = New-Object System.Drawing.Point(40,60); $lblPath.ForeColor = $script:theme.Text; $lblPath.AutoSize = $true; $form.Controls.Add($lblPath)
+$txtPath = New-Object System.Windows.Forms.TextBox; $txtPath.Location = New-Object System.Drawing.Point(105,58); $txtPath.Width = 545; $txtPath.Height = 25; $txtPath.ReadOnly = $true; $txtPath.BackColor = $script:theme.Box; $txtPath.ForeColor = $script:theme.Accent; $form.Controls.Add($txtPath)
+#endregion
+
+#region Contrôles UI - Champs Information Utilisateur (Labels)
+$fieldDefs = @(
+    @{ Key="Nom"; Label="Nom :"; Y=100 }, @{ Key="Prenom"; Label="Prenom :"; Y=130 },
+    @{ Key="Service"; Label="Service :"; Y=160 }, @{ Key="Matricule"; Label="Matricule :"; Y=190 },
+    @{ Key="Description"; Label="Description :"; Y=220 }, @{ Key="Adresse mail"; Label="Adresse mail :"; Y=250 },
+    @{ Key="Nom de session";Label="Nom de session :";Y=280 }, @{ Key="Etat du compte";Label="Etat du compte :";Y=310 },
+    @{ Key="Date expiration";Label="Date expiration :";Y=340 }, @{ Key="Password expire";Label="Password expire :";Y=370 }
+)
+$labels = @{} # Dictionnaires pour les libellés statiques "Nom :", "Prenom :", etc.
+# MODIFICATION: La variable $textboxes de votre paste.txt est conservée mais contiendra des Labels
+$textboxes = @{} # Contiendra des Labels pour afficher les données
+
+foreach ($def in $fieldDefs) {
+    $lbl = New-Object System.Windows.Forms.Label; $lbl.Text = $def.Label
+    $lbl.Location = New-Object System.Drawing.Point(40, $def.Y + 2) # +2 pour alignement vertical
+    $lbl.ForeColor = $script:theme.Text; $lbl.AutoSize = $true
+    $form.Controls.Add($lbl); $labels[$def.Key] = $lbl
+
+    # MODIFICATION: Remplacer TextBox par Label pour l'affichage des données
+    $dataLbl = New-Object System.Windows.Forms.Label
+    $dataLbl.Location = New-Object System.Drawing.Point(160, $def.Y + 2) # +2 pour alignement
+    $dataLbl.Width = 220; $dataLbl.Height = 20 # Donner une taille
+    $dataLbl.ForeColor = $script:theme.Text; $dataLbl.AutoSize = $false
+    $dataLbl.Text = "-" # Valeur initiale
+    $dataLbl.Visible = $false
+    # Optionnel: pour un look un peu comme une textbox désactivée
+    # $dataLbl.BorderStyle = [System.Windows.Forms.BorderStyle]::FixedSingle 
+    # $dataLbl.BackColor = $script:theme.Box 
+    $form.Controls.Add($dataLbl); $textboxes[$def.Key] = $dataLbl # Stocker le Label
+}
+#endregion
+
+#region Contrôles UI - Options et Actions Utilisateur
+# MODIFICATION: Remplacement de $chkPwdMustChange par un Label cliquable
+$lblPwdMustChange = New-Object System.Windows.Forms.Label
+$lblPwdMustChange.Text = "[  ] L'utilisateur doit changer son mot de passe" # Texte initial pour "décoché"
+$lblPwdMustChange.Tag = $false # Stocker l'état (booléen) dans la propriété Tag
+$lblPwdMustChange.Location = New-Object System.Drawing.Point(40,410); $lblPwdMustChange.AutoSize = $true
+$lblPwdMustChange.Visible = $false; $lblPwdMustChange.ForeColor = $script:theme.Text
+$lblPwdMustChange.Cursor = [System.Windows.Forms.Cursors]::Hand # Curseur main pour indiquer cliquable
+$form.Controls.Add($lblPwdMustChange)
+
+# $lblOui n'est plus nécessaire si le label ci-dessus est clair
+# $lblOui = New-Object System.Windows.Forms.Label ... (code original supprimé)
+
+$btnResetPwd = New-Object System.Windows.Forms.Button; $btnResetPwd.Text = "Reinitialisation Pwd"; $btnResetPwd.Location = New-Object System.Drawing.Point(40,450); $btnResetPwd.Width = 180; $btnResetPwd.Height = 25; $btnResetPwd.Visible = $false; $btnResetPwd.BackColor = $script:theme.Btn; $btnResetPwd.ForeColor = $script:theme.BtnText; $form.Controls.Add($btnResetPwd)
+$btnDisable = New-Object System.Windows.Forms.Button; $btnDisable.Text = "Desactivation du compte"; $btnDisable.Location = New-Object System.Drawing.Point(230,450); $btnDisable.Width = 180; $btnDisable.Height = 25; $btnDisable.Visible = $false; $btnDisable.BackColor = $script:theme.Btn; $btnDisable.ForeColor = $script:theme.BtnText; $form.Controls.Add($btnDisable)
+
+# --- Affichage des groupes d'appartenance ---
+$lblGroups = New-Object System.Windows.Forms.Label; $lblGroups.Text = "Membre de :"; 
+$lblGroups.Location = New-Object System.Drawing.Point(500,100) 
+$lblGroups.Visible = $false; $lblGroups.ForeColor = $script:theme.Accent; $lblGroups.AutoSize = $true
+$form.Controls.Add($lblGroups)
+$listGroups = New-Object System.Windows.Forms.ListBox
+$listGroups.Location = New-Object System.Drawing.Point(500,130)
+$listGroups.Size = New-Object System.Drawing.Size(400,250)
+$listGroups.Visible = $false
+$listGroups.BackColor = $script:theme.List; $listGroups.ForeColor = $script:theme.Text; $form.Controls.Add($listGroups)
+#endregion
+
+#region Logique Applicative - Initialisation et Fonctions UI
+$global:VilleFavorite = "" 
+
+$loadedFavoriteCity = Load-FavoriteCity
+if ($loadedFavoriteCity) {
+    $itemToSelect = $comboVille.Items | Where-Object { $_ -eq $loadedFavoriteCity } # Comparaison exacte
+    if ($itemToSelect) {
+        $comboVille.SelectedItem = $itemToSelect
+        $global:VilleFavorite = $loadedFavoriteCity
+        # $lblVilleFav.Text = "Ville favorite : " + $global:VilleFavorite # MODIFICATION: Supprimé
+    } else {
+        Write-Warning "Ville favorite '$loadedFavoriteCity' non trouvée dans la liste des villes actuelles."
+    }
+}
+
+function Set-Theme($t) {
+    $script:theme = $t; $form.BackColor = $script:theme.Back
+    $lblRecherche.ForeColor = $script:theme.Text; $txtRecherche.BackColor = $script:theme.Box; $txtRecherche.ForeColor = $script:theme.Text
+    $btnRecherche.BackColor = $script:theme.Btn; $btnRecherche.ForeColor = $script:theme.BtnText
+    $comboUsers.BackColor = $script:theme.List; $comboUsers.ForeColor = $script:theme.Text
+    $lblVille.ForeColor = $script:theme.Text; $comboVille.BackColor = $script:theme.List; $comboVille.ForeColor = $script:theme.Text
+    $btnFavori.ForeColor = $script:theme.BtnText
+    # $lblVilleFav.ForeColor = $script:theme.Text # MODIFICATION: Supprimé
+    $lblPath.ForeColor = $script:theme.Text; $txtPath.BackColor = $script:theme.Box; $txtPath.ForeColor = $script:theme.Accent
+    foreach ($def in $fieldDefs) {
+        if ($labels.ContainsKey($def.Key)) { $labels[$def.Key].ForeColor = $script:theme.Text }
+        if ($textboxes.ContainsKey($def.Key)) { # $textboxes contient maintenant des Labels
+            $textboxes[$def.Key].ForeColor = $script:theme.Text 
+            # Si vous aviez un style de fond pour les 'TextBoxes' (maintenant Labels)
+            # $textboxes[$def.Key].BackColor = $script:theme.Box 
+        }
+    }
+    $lblPwdMustChange.ForeColor = $script:theme.Text # MODIFICATION: Pour le nouveau Label
+    # $lblOui.ForeColor = $script:theme.Accent # $lblOui supprimé
+    $btnResetPwd.BackColor = $script:theme.Btn; $btnResetPwd.ForeColor = $script:theme.BtnText
+    $btnDisable.BackColor = $script:theme.Btn; $btnDisable.ForeColor = $script:theme.BtnText
+    $lblGroups.ForeColor = $script:theme.Accent; $listGroups.BackColor = $script:theme.List; $listGroups.ForeColor = $script:theme.Text
+}
+Set-Theme $script:theme 
+
+function Hide-UserFields {
+    $txtPath.Text = ""; foreach ($dataLbl_item in $textboxes.Values) { $dataLbl_item.Text = ""; $dataLbl_item.Visible = $false } # $textboxes contient des Labels
+    $lblPwdMustChange.Visible = $false # MODIFICATION
+    # $lblOui.Visible = $false # $lblOui supprimé
+    $btnResetPwd.Visible = $false; $btnDisable.Visible = $false
+    $lblGroups.Visible = $false; $listGroups.Visible = $false; $listGroups.Items.Clear()
+}
+function Show-UserFields {
+    foreach ($dataLbl_item in $textboxes.Values) { $dataLbl_item.Visible = $true } # $textboxes contient des Labels
+    $lblPwdMustChange.Visible = $true # MODIFICATION
+    # $lblOui.Visible = $true # $lblOui supprimé
+    $btnResetPwd.Visible = $true; $btnDisable.Visible = $true
+    $lblGroups.Visible = $true; $listGroups.Visible = $true
+}
+#endregion
+
+#region Logique Applicative - Fonctions AD
+# MODIFICATION: Fonction Search-Users revue pour filtrer par ville et gérer les accents pour la recherche
+function Search-Users {
+    Hide-UserFields; $comboUsers.Items.Clear(); $comboUsers.Text = ""; $txtPath.Text = ""
+    
+    $searchTermFromInput = $txtRecherche.Text.Trim()
+    $searchTermNormalized = Remove-Accents $searchTermFromInput # Pour la recherche
+    
+    if (-not $searchTermFromInput -and -not $comboVille.SelectedItem) {
+        # Si aucun critère, on pourrait vouloir vider ou ne rien faire, ou avertir.
+        # Pour l'instant, on continue, ce qui pourrait lister tous les users de $ouBase si aucune ville.
+        # Il serait mieux de retourner si les deux sont vides.
+        # if (-not $searchTermFromInput -and -not $comboVille.SelectedItem) { return }
+    }
+
+    try {
+        $effectiveSearchBase = $ouBase # $ouBase est l'OU parente des villes
+
+        if ($comboVille.SelectedItem) {
+            $selectedCityName = $comboVille.SelectedItem.ToString() # Nom brut de la ville (avec accents)
+            $effectiveSearchBase = "OU=$selectedCityName,$ouBase"
+            
+            if (-not (Get-ADOrganizationalUnit -Identity $effectiveSearchBase -ErrorAction SilentlyContinue)) {
+                Write-Warning "L'OU '$effectiveSearchBase' pour la ville '$selectedCityName' n'a pas été trouvée. Recherche dans '$ouBase'."
+                [System.Windows.Forms.MessageBox]::Show("L'OU pour la ville '$selectedCityName' est introuvable. La recherche sera effectuée dans la base parente des villes.", "Avertissement Ville")
+                $effectiveSearchBase = $ouBase 
+            }
+        }
+        
+        Write-Host "DEBUG: Recherche dans '$effectiveSearchBase' avec terme normalisé: '$searchTermNormalized'"
+
+        $filterParts = New-Object System.Collections.Generic.List[string]
+        if ($searchTermNormalized) { # Filtrer sur le nom si un terme est fourni
+             $filterParts.Add("(|(name=*$searchTermNormalized*)(givenName=*$searchTermNormalized*)(sn=*$searchTermNormalized*)(samaccountname=*$searchTermNormalized*))")
+        }
+        
+        $finalFilter = "*" # Par défaut, si aucun terme, chercher tous les utilisateurs dans le $effectiveSearchBase
+        if ($filterParts.Count -gt 0) {
+            $finalFilter = "(&" + ($filterParts -join '') + ")"
+        }
+
+        $users = Get-ADUser -SearchBase $effectiveSearchBase -LDAPFilter $finalFilter -Properties Name, Surname, GivenName, SamAccountName | Sort-Object Name
+        
+        $comboUsers.Items.Clear()
+        foreach ($u in $users) { 
+            # MODIFICATION: Afficher le nom brut (avec accents) dans la combobox
+            $comboUsers.Items.Add("$($u.Name) [$($u.SamAccountName)]") 
+        }
+        if ($comboUsers.Items.Count -gt 0) { 
+            $comboUsers.SelectedIndex = 0 
+        } else {
+            [System.Windows.Forms.MessageBox]::Show("Aucun utilisateur trouvé pour les critères spécifiés dans '$effectiveSearchBase'.", "Recherche")
+        }
+    } catch { 
+        Write-Warning "Erreur recherche AD: $($_.Exception.Message)" 
+        [System.Windows.Forms.MessageBox]::Show("Erreur lors de la recherche AD :`n$($_.Exception.Message)", "Erreur Recherche AD")
+    }
+}
+
+# MODIFICATION: Fonction Fill-UserInfo revue pour affichage des accents et pwdLastSet
+function Fill-UserInfo { 
+    Hide-UserFields
+    if (-not $comboUsers.SelectedItem) { return }
+    $selectedUserString = $comboUsers.SelectedItem.ToString()
+    $sam = $selectedUserString -replace '.*\[(.+?)\]$','$1'
+    try {
+        $propertiesToLoad = @("Name", "Surname", "GivenName", "SamAccountName", "Department", "EmployeeID", 
+                              "Description", "EmailAddress", "Enabled", "AccountExpirationDate", 
+                              "PasswordNeverExpires", "DistinguishedName", "pwdLastSet" ) # pwdLastSet est important
+        $u = Get-ADUser $sam -Properties $propertiesToLoad
+        
+        if (-not $u) { [System.Windows.Forms.MessageBox]::Show("Utilisateur '$sam' non trouvé.", "Erreur"); return }
+        
+        $txtPath.Text = $u.DistinguishedName
+        # MODIFICATION: Afficher les informations brutes (avec accents)
+        $textboxes["Nom"].Text = $u.Surname
+        $textboxes["Prenom"].Text = $u.GivenName
+        $textboxes["Service"].Text = $u.Department
+        $textboxes["Matricule"].Text = $u.EmployeeID
+        $textboxes["Description"].Text = $u.Description
+        $textboxes["Adresse mail"].Text = $u.EmailAddress
+        $textboxes["Nom de session"].Text = $u.SamAccountName
+        $textboxes["Etat du compte"].Text = if ($u.Enabled) { "compte actif" } else { "compte desactive" }
+        $textboxes["Date expiration"].Text = if ($u.AccountExpirationDate) { $u.AccountExpirationDate.ToString("dd/MM/yyyy HH:mm:ss") } else { "non verouillee" }
+        $textboxes["Password expire"].Text = if ($u.PasswordNeverExpires) { "jamais" } else { "Expire (selon politique)" }
+        
+        # MODIFICATION: Gérer le Label pour PwdMustChange via pwdLastSet
+        if ($null -ne $u.pwdLastSet -and $u.pwdLastSet -eq 0) {
+            $lblPwdMustChange.Tag = $true
+            $lblPwdMustChange.Text = "[X] L'utilisateur doit changer son mot de passe"
+            $lblPwdMustChange.ForeColor = [System.Drawing.Color]::OrangeRed # Ou une autre couleur pour "coché"
+        } else {
+            $lblPwdMustChange.Tag = $false
+            $lblPwdMustChange.Text = "[  ] L'utilisateur doit changer son mot de passe"
+            $lblPwdMustChange.ForeColor = $script:theme.Text # Couleur normale
+        }
+
+        $listGroups.Items.Clear()
+        $groups = Get-ADPrincipalGroupMembership -Identity $sam | Select-Object -ExpandProperty Name | Sort-Object
+        foreach ($g in $groups) { 
+            # MODIFICATION: Afficher le nom brut du groupe (avec accents)
+            $listGroups.Items.Add($g) 
+        }
+        Show-UserFields
+    } catch { 
+        $errorMessage = "Erreur chargement infos pour '$sam':`n$($_.Exception.Message)"
+        if ($_.Exception.InnerException) { $errorMessage += "`nInner Exception: $($_.Exception.InnerException.Message)" }
+        [System.Windows.Forms.MessageBox]::Show($errorMessage, "Erreur Critique")
+        return 
+    }
+}
+function Show-PasswordBox { param([string]$Message="...",[string]$Title="...",[System.Windows.Forms.Form]$Owner) { return $null } }
+#endregion
+
+#region Gestionnaires d'Événements UI
+$btnFavori.Add_Click({
+    if ($comboVille.SelectedItem) {
+        $global:VilleFavorite = $comboVille.SelectedItem.ToString() # Nom brut (avec accents)
+        Save-FavoriteCity $global:VilleFavorite
+        # $lblVilleFav.Text = "Ville favorite : " + $global:VilleFavorite # MODIFICATION: Supprimé
+    } else { 
+        $global:VilleFavorite = ""
+        Save-FavoriteCity $null
+        # $lblVilleFav.Text = "Ville favorite : ---" # MODIFICATION: Supprimé
+    }
+})
+$btnDark.Add_Click({ Set-Theme $dark }); $btnLight.Add_Click({ Set-Theme $light })
+$btnRecherche.Add_Click({ Search-Users }); $txtRecherche.Add_KeyDown({ if ($_.KeyCode -eq "Enter") { Search-Users } })
+$comboUsers.Add_SelectedIndexChanged({ Fill-UserInfo })
+
+# MODIFICATION: Gestionnaire de clic pour le Label $lblPwdMustChange
+$lblPwdMustChange.Add_Click({
+    $currentState = [bool]$lblPwdMustChange.Tag
+    $newState = -not $currentState
+    $lblPwdMustChange.Tag = $newState
+    if ($newState) {
+        $lblPwdMustChange.Text = "[X] L'utilisateur doit changer son mot de passe"
+        $lblPwdMustChange.ForeColor = [System.Drawing.Color]::OrangeRed
+    } else {
+        $lblPwdMustChange.Text = "[  ] L'utilisateur doit changer son mot de passe"
+        $lblPwdMustChange.ForeColor = $script:theme.Text
+    }
+})
+
+$btnResetPwd.Add_Click({
+    if (-not $comboUsers.SelectedItem) { [System.Windows.Forms.MessageBox]::Show("Veuillez selectionner un agent.", "Selection requise"); return }
+    $sam = ($comboUsers.SelectedItem.ToString() -replace '.*\[(.+?)\]$','$1')
+    try {
+        $adUser = Get-ADUser $sam -Properties EmployeeID, Enabled
+        if (-not $adUser) { [System.Windows.Forms.MessageBox]::Show("Utilisateur '$sam' non trouve.", "Erreur utilisateur"); return }
+        if (-not $adUser.EmployeeID) { [System.Windows.Forms.MessageBox]::Show("Matricule introuvable pour $sam.", "Erreur matricule"); return }
+        $newPwd = "Foundever@$($adUser.EmployeeID)$(Get-RandomCode)" 
+        if (-not $adUser.Enabled) { Set-ADUser -Identity $sam -Enabled $true }
+        Set-ADAccountPassword -Identity $sam -Reset -NewPassword (ConvertTo-SecureString $newPwd -AsPlainText -Force)
+        
+        # MODIFICATION: Utiliser l'état du Label $lblPwdMustChange
+        Set-ADUser -Identity $sam -ChangePasswordAtLogon:([bool]$lblPwdMustChange.Tag)
+        
+        $userMessage = "Mot de passe réinitialisé pour $sam.`nNouveau mot de passe : $newPwd"
+        if ([bool]$lblPwdMustChange.Tag) { $userMessage += "`nL'utilisateur devra changer ce mot de passe à la prochaine connexion." } 
+        else { $userMessage += "`nL'utilisateur NE devra PAS changer ce mot de passe à la prochaine connexion." }
+        $clipboardText = "Utilisateur: $sam`nNouveau mot de passe: $newPwd"
+        [System.Windows.Forms.Clipboard]::SetText($clipboardText); [System.Windows.Forms.MessageBox]::Show($userMessage, "Réinitialisation réussie"); Fill-UserInfo 
+    } catch { [System.Windows.Forms.MessageBox]::Show("Erreur reinitialisation MDP pour $sam :`n$($_.Exception.Message)", "Erreur critique") }
+})
+
+$btnDisable.Add_Click({
+    if (-not $comboUsers.SelectedItem) { return }
+    $sam = ($comboUsers.SelectedItem.ToString() -replace '.*\[(.+?)\]$','$1')
+    try {
+        Disable-ADAccount -Identity $sam
+        [System.Windows.Forms.MessageBox]::Show("Compte $sam desactive."); Fill-UserInfo
+    } catch { [System.Windows.Forms.MessageBox]::Show("Erreur désactivation compte $sam :`n$($_.Exception.Message)") }
+})
+#endregion
+
+#region Exécution du Script
+Hide-UserFields
+$form.Topmost = $true 
+[void]$form.ShowDialog() 
+#endregion

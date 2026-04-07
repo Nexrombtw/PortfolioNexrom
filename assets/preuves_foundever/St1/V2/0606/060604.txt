@@ -1,0 +1,244 @@
+# Fonction de déplacement d'utilisateur simplifiée - SEULEMENT la ville actuelle
+function Move-UserToOU {
+    try {
+        if (-not $script:UIControls.lbUsers.SelectedItem) {
+            Show-InfoMessage "Veuillez sélectionner un utilisateur."
+            return
+        }
+        
+        $selectedText = $script:UIControls.lbUsers.SelectedItem.ToString()
+        if ($selectedText -match '\[([^\]]+)\]') {
+            $samAccountName = $matches[1]
+        } else {
+            Show-ErrorMessage "Erreur" "Impossible d'identifier l'utilisateur sélectionné."
+            return
+        }
+        
+        # Récupérer la ville sélectionnée
+        $selectedCity = if ($script:UIControls.cbCity.SelectedItem) {
+            $script:UIControls.cbCity.SelectedItem.ToString() -replace "⭐ ", ""
+        } else {
+            Show-ErrorMessage "Erreur" "Aucune ville sélectionnée."
+            return
+        }
+        
+        # Récupérer l'utilisateur actuel
+        $user = Get-ADUser -Identity $samAccountName -Properties DistinguishedName, GivenName, Surname -ErrorAction Stop
+        
+        # Créer une fenêtre de sélection d'OU
+        $ouForm = New-Object System.Windows.Forms.Form -Property @{
+            Text = "Déplacer l'utilisateur - $selectedCity"
+            Size = [System.Drawing.Size]::new(600, 450)
+            StartPosition = "CenterParent"
+            BackColor = $script:Theme.Background
+            FormBorderStyle = 'FixedDialog'
+            MaximizeBox = $false
+            MinimizeBox = $false
+        }
+        
+        # Informations sur l'utilisateur
+        $lblUserInfo = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Déplacement de : $($user.GivenName) $($user.Surname) [$samAccountName]"
+            Location = [System.Drawing.Point]::new(20, 15)
+            Size = [System.Drawing.Size]::new(550, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Text
+            TextAlign = 'MiddleCenter'
+            BackColor = $script:Theme.Light
+            BorderStyle = 'FixedSingle'
+        }
+        
+        $lblInfo = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Sélectionner le dossier de destination dans $selectedCity :"
+            Location = [System.Drawing.Point]::new(20, 50)
+            Size = [System.Drawing.Size]::new(550, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Text
+        }
+        
+        # TreeView pour navigation hiérarchique
+        $tvOUs = New-Object System.Windows.Forms.TreeView -Property @{
+            Location = [System.Drawing.Point]::new(20, 80)
+            Size = [System.Drawing.Size]::new(550, 250)
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            ShowLines = $true
+            ShowPlusMinus = $true
+            ShowRootLines = $true
+            FullRowSelect = $true
+            HideSelection = $false
+        }
+        
+        # **FILTRAGE STRICT** : Chargement uniquement des dossiers utilisateurs de la ville actuelle
+        try {
+            $tvOUs.BeginUpdate()
+            
+            # **FILTRAGE** : Liste des dossiers à EXCLURE
+            $excludedFolders = @(
+                "Groups", "Functions", "Computers", "Service Accounts", 
+                "Resources", "Contacts", "Distribution Lists", "Security Groups",
+                "Shared Mailboxes", "Room Mailboxes", "Equipment", "Templates",
+                "System", "Builtin", "ForeignSecurityPrincipals", "Managed Service Accounts"
+            )
+            
+            # Charger SEULEMENT la ville sélectionnée
+            $citySearchBase = "OU=$selectedCity,$($script:Config.BaseOU)"
+            
+            # **FILTRAGE STRICT** : Exclure tous les dossiers système
+            $cityOUs = Get-ADOrganizationalUnit -SearchBase $citySearchBase -Filter * | 
+                      Where-Object { $excludedFolders -notcontains $_.Name } |
+                      Sort-Object Name | 
+                      Select-Object Name, DistinguishedName
+            
+            foreach ($ou in $cityOUs) {
+                $displayName = switch ($ou.Name) {
+                    "Administrative" { "Administrative" }
+                    "Commercial" { "Commercial" }
+                    "Technique" { "Technique" }
+                    "Direction" { "Direction" }
+                    "RH" { "Ressources Humaines" }
+                    "IT" { "Informatique" }
+                    "Others" { "Autres utilisateurs" }
+                    "Finance" { "Finance" }
+                    "Marketing" { "Marketing" }
+                    "Support" { "Support" }
+                    "Disable Users" { "Utilisateurs désactivés" }
+                    default { $ou.Name }
+                }
+                
+                $ouNode = $tvOUs.Nodes.Add($displayName)
+                $ouNode.Tag = $ou.DistinguishedName
+                $ouNode.ToolTipText = $ou.DistinguishedName
+                
+                # Ajouter les sous-dossiers si ils existent
+                try {
+                    $subOUs = Get-ADOrganizationalUnit -SearchBase $ou.DistinguishedName -Filter * | 
+                             Where-Object { $excludedFolders -notcontains $_.Name } |
+                             Sort-Object Name
+                    
+                    foreach ($subOU in $subOUs) {
+                        $subNode = $ouNode.Nodes.Add($subOU.Name)
+                        $subNode.Tag = $subOU.DistinguishedName
+                        $subNode.ToolTipText = $subOU.DistinguishedName
+                    }
+                } catch {
+                    # Ignorer les erreurs de sous-OUs
+                }
+                
+                # Développer automatiquement
+                $ouNode.Expand()
+            }
+            
+            if ($cityOUs.Count -eq 0) {
+                $noOUNode = $tvOUs.Nodes.Add("Aucun dossier utilisateur disponible")
+                $noOUNode.Tag = $null
+            }
+            
+            $tvOUs.EndUpdate()
+            
+        } catch {
+            Show-ErrorMessage "Erreur" "Impossible de charger les dossiers: $($_.Exception.Message)"
+            $ouForm.Close()
+            return
+        }
+        
+        # Zone d'informations sur la sélection
+        $lblSelection = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Aucune destination sélectionnée"
+            Location = [System.Drawing.Point]::new(20, 340)
+            Size = [System.Drawing.Size]::new(550, 30)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Italic)
+            ForeColor = $script:Theme.Text
+            BackColor = $script:Theme.Light
+            BorderStyle = 'FixedSingle'
+            TextAlign = 'MiddleLeft'
+        }
+        
+        # Boutons
+        $btnMove = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Déplacer"
+            Location = [System.Drawing.Point]::new(370, 380)
+            Size = [System.Drawing.Size]::new(100, 35)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+            Enabled = $false
+        }
+        
+        $btnCancel = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Annuler"
+            Location = [System.Drawing.Point]::new(480, 380)
+            Size = [System.Drawing.Size]::new(90, 35)
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        # Événements
+        $tvOUs.Add_AfterSelect({
+            $selectedNode = $tvOUs.SelectedNode
+            if ($selectedNode -and $selectedNode.Tag -and $selectedNode.Tag -ne $user.DistinguishedName) {
+                $lblSelection.Text = "Destination : $($selectedNode.Tag)"
+                $lblSelection.ForeColor = $script:Theme.Text
+                $btnMove.Enabled = $true
+            } else {
+                if ($selectedNode.Tag -eq $user.DistinguishedName) {
+                    $lblSelection.Text = "L'utilisateur est déjà dans ce dossier"
+                    $lblSelection.ForeColor = $script:Theme.Text
+                } else {
+                    $lblSelection.Text = "Sélection invalide - choisissez un dossier de destination"
+                    $lblSelection.ForeColor = $script:Theme.Text
+                }
+                $btnMove.Enabled = $false
+            }
+        })
+        
+        $tvOUs.Add_NodeMouseDoubleClick({
+            if ($btnMove.Enabled) {
+                $btnMove.PerformClick()
+            }
+        })
+        
+        $btnMove.Add_Click({
+            $selectedNode = $tvOUs.SelectedNode
+            if ($selectedNode -and $selectedNode.Tag) {
+                $targetDN = $selectedNode.Tag
+                $targetName = $selectedNode.Text
+                
+                $confirmMessage = "Confirmer le déplacement de l'utilisateur :`n`n" +
+                                 "Utilisateur : $($user.GivenName) $($user.Surname) [$samAccountName]`n" +
+                                 "Vers : $targetName`n" +
+                                 "Chemin : $targetDN`n`n" +
+                                 "Cette action est irréversible."
+                
+                if (Show-ConfirmDialog $confirmMessage "Confirmation de déplacement") {
+                    try {
+                        Move-ADObject -Identity $user.DistinguishedName -TargetPath $targetDN -ErrorAction Stop
+                        
+                        Write-Log "Utilisateur $samAccountName déplacé vers $targetDN" -Level Info
+                        Show-InfoMessage "Utilisateur déplacé avec succès vers :`n$targetName" "Déplacement réussi"
+                        
+                        # Rafraîchir l'affichage
+                        Show-UserDetails
+                        $ouForm.Close()
+                        
+                    } catch {
+                        Show-ErrorMessage "Erreur de déplacement" "Impossible de déplacer l'utilisateur :`n$($_.Exception.Message)"
+                    }
+                }
+            }
+        })
+        
+        $btnCancel.Add_Click({ $ouForm.Close() })
+        
+        $ouForm.Controls.AddRange(@($lblUserInfo, $lblInfo, $tvOUs, $lblSelection, $btnMove, $btnCancel))
+        $ouForm.ShowDialog()
+        
+    } catch {
+        Write-Log "Erreur lors du déplacement: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur" "Impossible d'ouvrir la fenêtre de déplacement: $($_.Exception.Message)"
+    }
+}

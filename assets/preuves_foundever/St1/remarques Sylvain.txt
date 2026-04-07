@@ -1,0 +1,48 @@
+*ajouter logo Founderver a droite de la zone de recherche
+* Comment sait-on si c'est bien notre site Favoris ? (couleur ou etoiles a prévoir) 
+
+a l'ouverture 
+*- fixe la taille de la fenêtre
+*- reduire taille du texte "info user"
+
+*selection ville = affiche tous les users
+
+recherche =
+*- ne fonctionne pas
+*- doit chercher aussi les comptes désactivés
+
+résultat recherche
+- nom prénom , prénom nom ????
+
+Réinitialiser = 
+*- supprimer "case obligatoire"
+- proposer choix "changement à l'ouverture de session"
+- ne copie pas dans le cache Windows (presse-papier) voir texte en-bas
+
+ bouton "désavtiver le compte"
+*- Tout les comptes disbale vont dans l'OU Wasquehal, peu importe le site 
+*- si user actif =  "désactiver le compte"
+- si user désactiver =  "activer le compte"
+	+ reinitialiser le password
+	+ option pour déplacer dans l'AD = attention ville
+
+l'ajout de groupe =
+*- remplacer liste déroulante pas champs de texte = la recherche ce fait dans TOUT l'AD
+*- remplacer "+" par "recherche"
+
+bouton déplacer ?
+*- A quoi sert le bouton deplacer ? 
+*- dois permettre de déplacer un user vers une autre OU
+- faire correspondre la ville à celle sélectionné dans fenetre princiapel
+
+
+Bonjour,
+Le mot de passe de xxxx xxxxx est réinitialisé : Foundever@9874!067593
+Il sera a modifié à l'ouverture de session.
+
+
+
+PC
+- faire afficher les PC qui n'ont rien dans l'attribut "serialNumber" et qui sont "active"
+- afficher les PC correspondant à la ville
+- 

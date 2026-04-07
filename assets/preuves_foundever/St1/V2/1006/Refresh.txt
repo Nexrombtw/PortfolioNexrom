@@ -1,0 +1,90 @@
+# Activation avec ouverture directe du menu complet de déplacement
+function Enable-UserAccount {
+    try {
+        if (-not $script:UIControls.lbUsers.SelectedItem) {
+            Show-InfoMessage "Veuillez sélectionner un utilisateur."
+            return
+        }
+        
+        $selectedText = $script:UIControls.lbUsers.SelectedItem.ToString()
+        if ($selectedText -match '\[([^\]]+)\]') {
+            $samAccountName = $matches[1]
+        } else {
+            Show-ErrorMessage "Erreur de sélection" "Impossible d'identifier l'utilisateur sélectionné."
+            return
+        }
+        
+        $user = Get-ADUser -Identity $samAccountName -Properties Surname, GivenName, Enabled, DistinguishedName -ErrorAction Stop
+        
+        if ($user.Enabled) {
+            Show-InfoMessage "Le compte de $($user.GivenName) $($user.Surname) est déjà activé."
+            return
+        }
+        
+        $confirmMessage = "ACTIVATION DE COMPTE`n`n" +
+                         "Vous êtes sur le point d'activer le compte de :`n`n" +
+                         "Utilisateur : $($user.GivenName) $($user.Surname)`n" +
+                         "Identifiant : $samAccountName`n`n" +
+                         "Cette action va :`n" +
+                         "• Activer le compte`n" +
+                         "• Réinitialiser le mot de passe`n" +
+                         "• Ouvrir le menu complet de déplacement`n`n" +
+                         "Voulez-vous continuer ?"
+        
+        if (-not (Show-ConfirmDialog $confirmMessage "Confirmation d'activation")) {
+            return
+        }
+        
+        # Activation du compte
+        Enable-ADAccount -Identity $samAccountName
+        Write-Log "Compte $samAccountName activé" -Level Info
+        
+        # MISE À JOUR de l'affichage
+        Update-UserDisplayInstant $samAccountName
+        
+        # Réinitialisation automatique du mot de passe
+        try {
+            $user = Get-ADUser -Identity $samAccountName -Properties EmployeeID -ErrorAction Stop
+            if (-not [string]::IsNullOrWhiteSpace($user.EmployeeID)) {
+                $newPassword = New-SecurePassword $user.EmployeeID
+                $securePassword = ConvertTo-SecureString $newPassword -AsPlainText -Force
+                Set-ADAccountPassword -Identity $samAccountName -Reset -NewPassword $securePassword
+                Set-ADUser -Identity $samAccountName -ChangePasswordAtLogon:$true
+                
+                # COPIE SILENCIEUSE dans le presse-papier
+                try {
+                    [System.Windows.Forms.Clipboard]::SetText($newPassword)
+                } catch {
+                    # Copie échouée mais on ne l'affiche pas
+                }
+                
+                $passwordMessage = "Mot de passe temporaire : $newPassword"
+            } else {
+                $passwordMessage = "Attention : Matricule manquant, mot de passe non réinitialisé"
+            }
+        } catch {
+            $passwordMessage = "Erreur lors de la réinitialisation du mot de passe"
+        }
+        
+        # NOUVEAU : Ouverture directe du menu complet de déplacement
+        Write-Log "Ouverture du menu complet de déplacement pour $samAccountName" -Level Info
+        
+        # Récupérer l'utilisateur mis à jour avec toutes les propriétés
+        $updatedUser = Get-ADUser -Identity $samAccountName -Properties DistinguishedName, GivenName, Surname -ErrorAction Stop
+        
+        # Ouvrir directement l'interface complète de déplacement
+        Show-UniformMoveInterface $updatedUser
+        
+        # Affichage du mot de passe si généré
+        if ($passwordMessage -and $passwordMessage.Contains("Mot de passe temporaire")) {
+            Show-InfoMessage $passwordMessage "Mot de passe généré"
+        }
+        
+        Write-Log "Activation complète du compte $samAccountName avec ouverture du menu de déplacement" -Level Info
+        Show-UserDetails
+        
+    } catch {
+        Write-Log "Erreur lors de l'activation du compte: $($_.Exception.Message)" -Level Error
+        Show-ErrorMessage "Erreur d'activation" "Impossible d'activer le compte: $($_.Exception.Message)"
+    }
+}

@@ -1,0 +1,77 @@
+# MODIFIÉ : Panneau des ordinateurs simplifié avec seulement Actualiser et Recherche
+function Initialize-ComputersPanel {
+    try {
+        $script:UIControls.grpComputers = New-Object System.Windows.Forms.GroupBox -Property @{
+            Text = "Ordinateurs actifs sans numero de serie (Chargement...)"
+            Location = [System.Drawing.Point]::new(15, 365)
+            Size = [System.Drawing.Size]::new(310, 240)
+            BackColor = $script:Theme.Background
+            ForeColor = $script:Theme.Primary
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+            Anchor = 'Top,Left,Bottom'
+        }
+        
+        # Liste des ordinateurs agrandie
+        $script:UIControls.lbComputers = New-Object System.Windows.Forms.ListBox -Property @{
+            Location = [System.Drawing.Point]::new(10, 30)
+            Size = [System.Drawing.Size]::new(290, 170)
+            BackColor = $script:Theme.White
+            ForeColor = $script:Theme.Text
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+            Anchor = 'Top,Left,Right,Bottom'
+            SelectionMode = 'One'
+        }
+        
+        # Double-clic pour modifier le numéro de série
+        $script:UIControls.lbComputers.Add_DoubleClick({
+            try { Show-SerialNumberDialog }
+            catch { Show-ErrorMessage "Erreur" $_.Exception.Message }
+        })
+        
+        # Bouton Actualiser
+        $btnRefresh = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Actualiser"
+            Location = [System.Drawing.Point]::new(10, 210)
+            Size = [System.Drawing.Size]::new(140, 25)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        # Bouton Recherche
+        $btnSearch = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Recherche"
+            Location = [System.Drawing.Point]::new(160, 210)
+            Size = [System.Drawing.Size]::new(140, 25)
+            BackColor = $script:Theme.Secondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        # Événements
+        $btnRefresh.Add_Click({
+            try { Load-ComputersWithoutSerial }
+            catch { Show-ErrorMessage "Erreur" $_.Exception.Message }
+        })
+        
+        $btnSearch.Add_Click({
+            try { Show-SimpleComputerSearch }
+            catch { Show-ErrorMessage "Erreur" $_.Exception.Message }
+        })
+        
+        $script:UIControls.grpComputers.Controls.AddRange(@(
+            $script:UIControls.lbComputers, $btnRefresh, $btnSearch
+        ))
+        
+        $script:UIControls.Form.Controls.Add($script:UIControls.grpComputers)
+        Load-ComputersWithoutSerial
+        
+        Write-Log "Panneau ordinateurs simplifie initialise" -Level Info
+        return $true
+    } catch {
+        Write-Log "Erreur initialisation panneau ordinateurs: $($_.Exception.Message)" -Level Error
+        return $false
+    }
+}

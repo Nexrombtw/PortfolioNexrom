@@ -1,0 +1,184 @@
+# Gestion en lot améliorée (remplace ta fonction existante ligne 3379)
+function Show-BulkUserManagement {
+    try {
+        $bulkForm = New-Object System.Windows.Forms.Form -Property @{
+            Text = "Gestion en lot d'utilisateurs"
+            Size = [System.Drawing.Size]::new(550, 450)
+            StartPosition = "CenterParent"
+            FormBorderStyle = 'FixedDialog'
+            MaximizeBox = $false
+            BackColor = $script:Theme.Background
+        }
+        
+        # En-tête compact et stylé
+        $lblTitle = New-Object System.Windows.Forms.Label -Property @{
+            Text = "GESTION EN LOT"
+            Location = [System.Drawing.Point]::new(20, 15)
+            Size = [System.Drawing.Size]::new(510, 25)
+            Font = [System.Drawing.Font]::new("Segoe UI", 14, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Primary
+            TextAlign = 'MiddleCenter'
+        }
+        
+        # Section Actions principales (2x3 grid compact)
+        $grpActions = New-Object System.Windows.Forms.GroupBox -Property @{
+            Text = "Actions disponibles"
+            Location = [System.Drawing.Point]::new(20, 50)
+            Size = [System.Drawing.Size]::new(510, 200)
+            BackColor = $script:Theme.Background
+            ForeColor = $script:Theme.Primary
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        # Boutons en grille 2x3 compacte
+        $btnBulkReset = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Réinitialiser mots de passe"
+            Location = [System.Drawing.Point]::new(20, 30)
+            Size = [System.Drawing.Size]::new(220, 45)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $btnBulkDisable = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Désactiver comptes"
+            Location = [System.Drawing.Point]::new(260, 30)
+            Size = [System.Drawing.Size]::new(220, 45)
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $btnBulkMove = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Déplacer utilisateurs"
+            Location = [System.Drawing.Point]::new(20, 85)
+            Size = [System.Drawing.Size]::new(220, 45)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $btnBulkGroups = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Gestion groupes"
+            Location = [System.Drawing.Point]::new(260, 85)
+            Size = [System.Drawing.Size]::new(220, 45)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $btnExport = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Exporter utilisateurs"
+            Location = [System.Drawing.Point]::new(20, 140)
+            Size = [System.Drawing.Size]::new(220, 45)
+            BackColor = $script:Theme.Secondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $btnReports = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Rapports inactifs"
+            Location = [System.Drawing.Point]::new(260, 140)
+            Size = [System.Drawing.Size]::new(220, 45)
+            BackColor = $script:Theme.Secondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $grpActions.Controls.AddRange(@($btnBulkReset, $btnBulkDisable, $btnBulkMove, $btnBulkGroups, $btnExport, $btnReports))
+        
+        # Section info compacte
+        $grpInfo = New-Object System.Windows.Forms.GroupBox -Property @{
+            Text = "Information"
+            Location = [System.Drawing.Point]::new(20, 260)
+            Size = [System.Drawing.Size]::new(510, 80)
+            BackColor = $script:Theme.Background
+            ForeColor = $script:Theme.Primary
+            Font = [System.Drawing.Font]::new("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
+        }
+        
+        $lblInfo = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Utilisez d'abord la recherche principale pour trouver vos utilisateurs,`npuis revenez ici pour appliquer les actions en lot."
+            Location = [System.Drawing.Point]::new(20, 25)
+            Size = [System.Drawing.Size]::new(470, 40)
+            Font = [System.Drawing.Font]::new("Segoe UI", 9, [System.Drawing.FontStyle]::Italic)
+            ForeColor = $script:Theme.Text
+            TextAlign = 'MiddleCenter'
+        }
+        
+        $grpInfo.Controls.Add($lblInfo)
+        
+        # Boutons de contrôle compacts
+        $btnHelp = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Aide"
+            Location = [System.Drawing.Point]::new(380, 360)
+            Size = [System.Drawing.Size]::new(70, 30)
+            BackColor = $script:Theme.Secondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+        }
+        
+        $btnClose = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Fermer"
+            Location = [System.Drawing.Point]::new(460, 360)
+            Size = [System.Drawing.Size]::new(70, 30)
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 9)
+        }
+        
+        # Événements (messages d'info pour l'instant)
+        $btnBulkReset.Add_Click({ 
+            Show-InfoMessage "Fonction de réinitialisation en lot à développer selon vos besoins"
+        })
+        $btnBulkDisable.Add_Click({ 
+            Show-InfoMessage "Fonction de désactivation en lot à développer selon vos besoins"
+        })
+        $btnBulkMove.Add_Click({ 
+            Show-InfoMessage "Fonction de déplacement en lot à développer selon vos besoins"
+        })
+        $btnBulkGroups.Add_Click({ 
+            Show-InfoMessage "Fonction de gestion de groupes en lot à développer selon vos besoins"
+        })
+        $btnExport.Add_Click({ 
+            Show-InfoMessage "Fonction d'export à développer selon vos besoins"
+        })
+        $btnReports.Add_Click({ 
+            Show-InfoMessage "Fonction de rapports à développer selon vos besoins"
+        })
+        
+        $btnHelp.Add_Click({
+            $helpMessage = "AIDE - GESTION EN LOT`n`n" +
+                          "Actions disponibles :`n" +
+                          "• Réinitialiser mots de passe : Réinitialise plusieurs mots de passe`n" +
+                          "• Désactiver comptes : Désactive plusieurs comptes`n" +
+                          "• Déplacer utilisateurs : Déplace plusieurs utilisateurs`n" +
+                          "• Gestion groupes : Ajoute/retire des groupes`n" +
+                          "• Exporter utilisateurs : Exporte la liste`n" +
+                          "• Rapports inactifs : Génère des rapports`n`n" +
+                          "Utilisation :`n" +
+                          "1. Utilisez d'abord la recherche principale`n" +
+                          "2. Puis revenez ici pour les actions en lot"
+            
+            Show-InfoMessage $helpMessage "Aide - Gestion en lot"
+        })
+        
+        $btnClose.Add_Click({ $bulkForm.Close() })
+        
+        # Ajout de tous les contrôles
+        $bulkForm.Controls.AddRange(@($lblTitle, $grpActions, $grpInfo, $btnHelp, $btnClose))
+        
+        $bulkForm.ShowDialog()
+        
+    } catch {
+        Show-ErrorMessage "Erreur gestion en lot" $_.Exception.Message
+    }
+}

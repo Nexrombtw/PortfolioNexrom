@@ -1,0 +1,41 @@
+Échec lors de l’appel de la méthode, car [System.Object[]] ne contient pas de méthode nommée « op_Subtraction ».
+Au caractère C:\Users\Administrateur\Desktop\VEGAP.ps1:135 : 5
++     $lblDyn.Location = New-Object System.Drawing.Point(120, $field.Y  ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation : (op_Subtraction:String) [], RuntimeException
+    + FullyQualifiedErrorId : MethodNotFound
+
+Échec lors de l’appel de la méthode, car [System.Object[]] ne contient pas de méthode nommée « op_Subtraction ».
+Au caractère C:\Users\Administrateur\Desktop\VEGAP.ps1:135 : 5
++     $lblDyn.Location = New-Object System.Drawing.Point(120, $field.Y  ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation : (op_Subtraction:String) [], RuntimeException
+    + FullyQualifiedErrorId : MethodNotFound
+
+Échec lors de l’appel de la méthode, car [System.Object[]] ne contient pas de méthode nommée « op_Subtraction ».
+Au caractère C:\Users\Administrateur\Desktop\VEGAP.ps1:135 : 5
++     $lblDyn.Location = New-Object System.Drawing.Point(120, $field.Y  ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation : (op_Subtraction:String) [], RuntimeException
+    + FullyQualifiedErrorId : MethodNotFound
+
+Échec lors de l’appel de la méthode, car [System.Object[]] ne contient pas de méthode nommée « op_Subtraction ».
+Au caractère C:\Users\Administrateur\Desktop\VEGAP.ps1:135 : 5
++     $lblDyn.Location = New-Object System.Drawing.Point(120, $field.Y  ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation : (op_Subtraction:String) [], RuntimeException
+    + FullyQualifiedErrorId : MethodNotFound
+
+Échec lors de l’appel de la méthode, car [System.Object[]] ne contient pas de méthode nommée « op_Subtraction ».
+Au caractère C:\Users\Administrateur\Desktop\VEGAP.ps1:135 : 5
++     $lblDyn.Location = New-Object System.Drawing.Point(120, $field.Y  ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation : (op_Subtraction:String) [], RuntimeException
+    + FullyQualifiedErrorId : MethodNotFound
+
+Échec lors de l’appel de la méthode, car [System.Object[]] ne contient pas de méthode nommée « op_Subtraction ».
+Au caractère C:\Users\Administrateur\Desktop\VEGAP.ps1:135 : 5
++     $lblDyn.Location = New-Object System.Drawing.Point(120, $field.Y  ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidOperation : (op_Subtraction:String) [], RuntimeException
+    + FullyQualifiedErrorId : MethodNotFound

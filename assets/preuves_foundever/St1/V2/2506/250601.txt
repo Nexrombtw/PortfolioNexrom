@@ -1,0 +1,142 @@
+function Show-BulkUserManagement {
+    try {
+        # Création de la fenêtre de gestion en lot
+        $bulkForm = New-Object System.Windows.Forms.Form -Property @{
+            Text = "Gestion en lot des utilisateurs"
+            Size = [System.Drawing.Size]::new(800, 600)
+            StartPosition = "CenterParent"
+            FormBorderStyle = 'FixedDialog'
+            MaximizeBox = $false
+            MinimizeBox = $false
+            BackColor = $script:Theme.Background
+        }
+        
+        $lblTitle = New-Object System.Windows.Forms.Label -Property @{
+            Text = "GESTION EN LOT DES UTILISATEURS"
+            Location = [System.Drawing.Point]::new(20, 20)
+            Size = [System.Drawing.Size]::new(740, 30)
+            Font = [System.Drawing.Font]::new("Segoe UI", 14, [System.Drawing.FontStyle]::Bold)
+            ForeColor = $script:Theme.Primary
+            TextAlign = 'MiddleCenter'
+        }
+        
+        $lblInstructions = New-Object System.Windows.Forms.Label -Property @{
+            Text = "Saisissez les noms d'utilisateur (un par ligne) :"
+            Location = [System.Drawing.Point]::new(20, 60)
+            Size = [System.Drawing.Size]::new(400, 20)
+            Font = [System.Drawing.Font]::new("Segoe UI", 10)
+            ForeColor = $script:Theme.Text
+        }
+        
+        $txtUserList = New-Object System.Windows.Forms.TextBox -Property @{
+            Location = [System.Drawing.Point]::new(20, 90)
+            Size = [System.Drawing.Size]::new(740, 300)
+            Multiline = $true
+            ScrollBars = 'Vertical'
+            Font = [System.Drawing.Font]::new("Consolas", 10)
+            BackColor = $script:Theme.White
+        }
+        
+        $btnResetPasswords = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Réinitialiser mots de passe"
+            Location = [System.Drawing.Point]::new(20, 410)
+            Size = [System.Drawing.Size]::new(180, 40)
+            BackColor = $script:Theme.ButtonPrimary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 10)
+        }
+        
+        $btnDisableAccounts = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Désactiver comptes"
+            Location = [System.Drawing.Point]::new(220, 410)
+            Size = [System.Drawing.Size]::new(180, 40)
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+            Font = [System.Drawing.Font]::new("Segoe UI", 10)
+        }
+        
+        $btnClose = New-Object System.Windows.Forms.Button -Property @{
+            Text = "Fermer"
+            Location = [System.Drawing.Point]::new(680, 410)
+            Size = [System.Drawing.Size]::new(80, 40)
+            BackColor = $script:Theme.ButtonSecondary
+            ForeColor = $script:Theme.White
+            FlatStyle = 'Flat'
+        }
+        
+        $txtResults = New-Object System.Windows.Forms.TextBox -Property @{
+            Location = [System.Drawing.Point]::new(20, 470)
+            Size = [System.Drawing.Size]::new(740, 100)
+            Multiline = $true
+            ScrollBars = 'Vertical'
+            ReadOnly = $true
+            Font = [System.Drawing.Font]::new("Consolas", 9)
+            BackColor = $script:Theme.Light
+        }
+        
+        $btnResetPasswords.Add_Click({
+            $usernames = $txtUserList.Text -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
+            if ($usernames.Count -eq 0) {
+                Show-InfoMessage "Veuillez saisir au moins un nom d'utilisateur."
+                return
+            }
+            
+            $results = @()
+            foreach ($username in $usernames) {
+                try {
+                    $user = Get-ADUser -Identity $username -Properties EmployeeID -ErrorAction Stop
+                    if ([string]::IsNullOrWhiteSpace($user.EmployeeID)) {
+                        $results += "$username : ERREUR - Matricule manquant"
+                        continue
+                    }
+                    
+                    $newPassword = New-SecurePassword $user.EmployeeID
+                    $securePassword = ConvertTo-SecureString $newPassword -AsPlainText -Force
+                    Set-ADAccountPassword -Identity $username -Reset -NewPassword $securePassword
+                    Set-ADUser -Identity $username -ChangePasswordAtLogon $true
+                    Enable-ADAccount -Identity $username
+                    
+                    $results += "$username : Mot de passe réinitialisé - $newPassword"
+                } catch {
+                    $results += "$username : ERREUR - $($_.Exception.Message)"
+                }
+            }
+            
+            $txtResults.Text = $results -join "`r`n"
+        })
+        
+        $btnDisableAccounts.Add_Click({
+            $usernames = $txtUserList.Text -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne "" }
+            if ($usernames.Count -eq 0) {
+                Show-InfoMessage "Veuillez saisir au moins un nom d'utilisateur."
+                return
+            }
+            
+            if (-not (Show-ConfirmDialog "Désactiver $($usernames.Count) compte(s) utilisateur(s) ?" "Confirmation")) {
+                return
+            }
+            
+            $results = @()
+            foreach ($username in $usernames) {
+                try {
+                    Disable-ADAccount -Identity $username -ErrorAction Stop
+                    $results += "$username : Compte désactivé avec succès"
+                } catch {
+                    $results += "$username : ERREUR - $($_.Exception.Message)"
+                }
+            }
+            
+            $txtResults.Text = $results -join "`r`n"
+        })
+        
+        $btnClose.Add_Click({ $bulkForm.Close() })
+        
+        $bulkForm.Controls.AddRange(@($lblTitle, $lblInstructions, $txtUserList, $btnResetPasswords, $btnDisableAccounts, $btnClose, $txtResults))
+        $bulkForm.ShowDialog()
+        
+    } catch {
+        Show-ErrorMessage "Erreur" $_.Exception.Message
+    }
+}

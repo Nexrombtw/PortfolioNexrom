@@ -1,0 +1,411 @@
+# Import des assemblies nécessaires
+Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+Import-Module ActiveDirectory -ErrorAction SilentlyContinue
+
+# Fonctions de stockage favori
+function Load-Favorite {
+    $favFile = Join-Path $env:APPDATA "UserFavorite.json"
+    if (Test-Path $favFile) {
+        try {
+            return Get-Content $favFile -Raw | ConvertFrom-Json
+        } catch {
+            return @{}
+        }
+    }
+    return @{}
+}
+
+function Save-Favorite($fav) {
+    $favFile = Join-Path $env:APPDATA "UserFavorite.json"
+    $fav | ConvertTo-Json -Depth 1 | Set-Content $favFile
+}
+
+# Création du form principal
+$form = New-Object System.Windows.Forms.Form
+$form.Text = "Gestion AD Utilisateurs"
+$form.Size = New-Object System.Drawing.Size(950, 750)
+$form.StartPosition = [System.Windows.Forms.FormStartPosition]::CenterScreen
+$form.BackColor = [System.Drawing.Color]::White
+
+# Variables globales
+$baseOUGlobal = "OU=FR,DC=Marche,DC=lan"
+$favoriteUser = Load-Favorite
+
+# --- Section : Ville ---
+$lblVille = New-Object System.Windows.Forms.Label
+$lblVille.Text = "Ville :"
+$lblVille.Location = New-Object System.Drawing.Point(10, 15)
+$lblVille.AutoSize = $true
+$form.Controls.Add($lblVille)
+
+$cbVille = New-Object System.Windows.Forms.ComboBox
+$cbVille.Location = New-Object System.Drawing.Point(70, 12)
+$cbVille.Size = New-Object System.Drawing.Size(200, 20)
+$cbVille.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+$form.Controls.Add($cbVille)
+
+# Bouton Favori
+$btnFavorite = New-Object System.Windows.Forms.Button
+$btnFavorite.Text = "Favori"
+$btnFavorite.Location = New-Object System.Drawing.Point(280, 10)
+$btnFavorite.Size = New-Object System.Drawing.Size(70, 22)
+$form.Controls.Add($btnFavorite)
+
+# Charger les OU de la ville
+try {
+    Get-ADOrganizationalUnit -Filter * -SearchBase $baseOUGlobal -SearchScope OneLevel |
+        Select-Object -ExpandProperty Name | Sort-Object |
+        ForEach-Object { $cbVille.Items.Add($_) }
+} catch {
+    [System.Windows.Forms.MessageBox]::Show("Erreur chargement OU: $($_.Exception.Message)", "Erreur")
+}
+
+# Charger la dernière ville sélectionnée
+if ($global:settingsData -and $global:settingsData.LastCity -and $cbVille.Items.Contains($global:settingsData.LastCity)) {
+    $cbVille.SelectedItem = $global:settingsData.LastCity
+}
+
+# --- Recherche ---
+$lblRech = New-Object System.Windows.Forms.Label
+$lblRech.Text = "Rechercher (Nom/Prénom/Login) :"
+$lblRech.Location = New-Object System.Drawing.Point(10, 45)
+$lblRech.AutoSize = $true
+$form.Controls.Add($lblRech)
+
+$txtRech = New-Object System.Windows.Forms.TextBox
+$txtRech.Location = New-Object System.Drawing.Point(220, 42)
+$txtRech.Size = New-Object System.Drawing.Size(200, 20)
+$form.Controls.Add($txtRech)
+
+# Bouton OK
+$btnOK = New-Object System.Windows.Forms.Button
+$btnOK.Text = "OK"
+$btnOK.Location = New-Object System.Drawing.Point(430, 40)
+$btnOK.Size = New-Object System.Drawing.Size(40, 20)
+$form.Controls.Add($btnOK)
+
+# Liste des utilisateurs
+$lbUsers = New-Object System.Windows.Forms.ListBox
+$lbUsers.Location = New-Object System.Drawing.Point(10, 80)
+$lbUsers.Size = New-Object System.Drawing.Size(460, 150)
+$form.Controls.Add($lbUsers)
+
+# Zone Path LDAP
+$lblPathStatic = New-Object System.Windows.Forms.Label
+$lblPathStatic.Text = "Path LDAP:"
+$lblPathStatic.Location = New-Object System.Drawing.Point(10, 240)
+$lblPathStatic.AutoSize = $true
+$form.Controls.Add($lblPathStatic)
+
+$txtPath = New-Object System.Windows.Forms.TextBox
+$txtPath.Location = New-Object System.Drawing.Point(120, 238)
+$txtPath.Size = New-Object System.Drawing.Size(750, 23)
+$txtPath.ReadOnly = $true
+$txtPath.BackColor = [System.Drawing.Color]::White
+$form.Controls.Add($txtPath)
+
+# --- Détails utilisateur ---
+$fields = @(
+    @{Key='Nom'; Label='Nom :'; Y=270},
+    @{Key='Prenom'; Label='Prénom :'; Y=300},
+    @{Key='Service'; Label='Service :'; Y=330},
+    @{Key='Matricule'; Label='Matricule :'; Y=360},
+    @{Key='Mail'; Label='Adresse mail :'; Y=390},
+    @{Key='Session'; Label='Nom session :'; Y=420}
+)
+
+$detailLabels = @{}
+foreach ($field in $fields) {
+    # Vérification que Y est bien numérique
+    if ($null -eq $field.Y -or -not ($field.Y -is [int])) {
+        Write-Warning "Y n'est pas défini ou pas un entier pour le champ : $($field.Key)"
+        continue
+    }
+    # Label statique
+    $lblStat = New-Object System.Windows.Forms.Label
+    $lblStat.Text = $field.Label
+    $lblStat.Location = New-Object System.Drawing.Point(10, $field.Y)
+    $lblStat.AutoSize = $true
+    $lblStat.ForeColor = [System.Drawing.Color]::Black
+    $lblStat.Enabled = $false
+    $form.Controls.Add($lblStat)
+    # Label dynamique
+    $lblDyn = New-Object System.Windows.Forms.Label
+    $lblDyn.Location = New-Object System.Drawing.Point(120, $field.Y - 2)
+    $lblDyn.Size = New-Object System.Drawing.Size(350, 23)
+    $lblDyn.BorderStyle = [System.Windows.Forms.BorderStyle]::Fixed3D
+    $lblDyn.BackColor = [System.Drawing.Color]::White
+    $lblDyn.ForeColor = [System.Drawing.Color]::Black
+    $lblDyn.Text = "-"
+    $lblDyn.Visible = $false
+    $form.Controls.Add($lblDyn)
+    $detailLabels[$field.Key] = $lblDyn
+}
+
+# --- Options et boutons ---
+$chkForcePwd = New-Object System.Windows.Forms.CheckBox
+$chkForcePwd.Text = "Forcer changement MDP au prochain logon"
+$chkForcePwd.Location = New-Object System.Drawing.Point(10, 460)
+$chkForcePwd.AutoSize = $true
+$chkForcePwd.Visible = $false
+$form.Controls.Add($chkForcePwd)
+
+$btnResetPwd = New-Object System.Windows.Forms.Button
+$btnResetPwd.Text = "Réinitialiser MDP"
+$btnResetPwd.Location = New-Object System.Drawing.Point(10, 490)
+$btnResetPwd.Size = New-Object System.Drawing.Size(150, 30)
+$btnResetPwd.Visible = $false
+$form.Controls.Add($btnResetPwd)
+
+$btnDisable = New-Object System.Windows.Forms.Button
+$btnDisable.Text = "Désactiver Compte"
+$btnDisable.Location = New-Object System.Drawing.Point(170, 490)
+$btnDisable.Size = New-Object System.Drawing.Size(150, 30)
+$btnDisable.Visible = $false
+$form.Controls.Add($btnDisable)
+
+$btnMoveOU = New-Object System.Windows.Forms.Button
+$btnMoveOU.Text = "Déplacer Utilisateur (OU)"
+$btnMoveOU.Location = New-Object System.Drawing.Point(330, 490)
+$btnMoveOU.Size = New-Object System.Drawing.Size(180, 30)
+$btnMoveOU.Visible = $false
+$form.Controls.Add($btnMoveOU)
+
+# Groupes
+$lblGroups = New-Object System.Windows.Forms.Label
+$lblGroups.Text = "Membre de :"
+$lblGroups.Location = New-Object System.Drawing.Point(10, 535)
+$lblGroups.AutoSize = $true
+$lblGroups.Visible = $false
+$form.Controls.Add($lblGroups)
+
+$lbGroups = New-Object System.Windows.Forms.ListBox
+$lbGroups.Location = New-Object System.Drawing.Point(10, 560)
+$lbGroups.Size = New-Object System.Drawing.Size(300, 120)
+$lbGroups.Visible = $false
+$form.Controls.Add($lbGroups)
+
+$lblAddGroups = New-Object System.Windows.Forms.Label
+$lblAddGroups.Text = "Déplacer vers / Ajouter groupe AD :"
+$lblAddGroups.Location = New-Object System.Drawing.Point(320, 535)
+$lblAddGroups.AutoSize = $true
+$lblAddGroups.Visible = $false
+$form.Controls.Add($lblAddGroups)
+
+$cbAllGroups = New-Object System.Windows.Forms.ComboBox
+$cbAllGroups.Location = New-Object System.Drawing.Point(580, 560)
+$cbAllGroups.Size = New-Object System.Drawing.Size(250, 20)
+$cbAllGroups.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+$cbAllGroups.BackColor = [System.Drawing.Color]::White
+$cbAllGroups.Visible = $false
+$form.Controls.Add($cbAllGroups)
+
+# Charger groupes AD
+try {
+    $groups = Get-ADGroup -Filter * | Sort-Object Name
+    foreach ($grp in $groups) {
+        $null = $cbAllGroups.Items.Add($grp.Name)
+    }
+} catch {
+    Write-Warning "Erreur chargement groupes AD: $($_.Exception.Message)"
+}
+
+# Boutons groupes
+$btnMoveGroup = New-Object System.Windows.Forms.Button
+$btnMoveGroup.Text = "Déplacer (Source -> Cible)"
+$btnMoveGroup.Location = New-Object System.Drawing.Point(580, 588)
+$btnMoveGroup.Size = New-Object System.Drawing.Size(300, 25)
+$btnMoveGroup.Visible = $false
+$form.Controls.Add($btnMoveGroup)
+
+$btnAddToGroup = New-Object System.Windows.Forms.Button
+$btnAddToGroup.Text = "Ajouter au Groupe"
+$btnAddToGroup.Location = New-Object System.Drawing.Point(320, 620)
+$btnAddToGroup.Size = New-Object System.Drawing.Size(250, 30)
+$btnAddToGroup.Visible = $false
+$form.Controls.Add($btnAddToGroup)
+
+$btnRemoveFromGroup = New-Object System.Windows.Forms.Button
+$btnRemoveFromGroup.Text = "Retirer du Groupe"
+$btnRemoveFromGroup.Location = New-Object System.Drawing.Point(320, 660)
+$btnRemoveFromGroup.Size = New-Object System.Drawing.Size(250, 30)
+$btnRemoveFromGroup.Visible = $false
+$form.Controls.Add($btnRemoveFromGroup)
+
+# --- Fonction pour gérer la visibilité des détails utilisateur ---
+function Set-UserDetailsVisibility($visible) {
+    $txtPath.Visible = $visible
+    foreach ($lbl in $detailLabels.Values) { $lbl.Visible = $visible }
+    $chkForcePwd.Visible = $visible
+    $btnResetPwd.Visible = $visible
+    $btnDisable.Visible = $visible
+    $btnMoveOU.Visible = $visible
+    $lblGroups.Visible = $visible
+    $lbGroups.Visible = $visible
+    $lblAddGroups.Visible = $visible
+    $cbAllGroups.Visible = $visible
+    $btnMoveGroup.Visible = $visible
+    $btnAddToGroup.Visible = $visible
+    $btnRemoveFromGroup.Visible = $visible
+    if (-not $visible) {
+        $txtPath.Text = ""
+        foreach ($lbl in $detailLabels.Values) { $lbl.Text = "-" }
+        $lbGroups.Items.Clear()
+    }
+}
+# Initialement, cacher les détails
+Set-UserDetailsVisibility $false
+
+# --- Événements ---
+
+# Rechercher utilisateurs
+$null = $btnOK.Add_Click({
+    $searchText = $txtRech.Text.Trim()
+    $lbUsers.Items.Clear()
+    if ([string]::IsNullOrWhiteSpace($searchText)) {
+        [System.Windows.Forms.MessageBox]::Show("Entrez un terme de recherche.", "Info")
+        return
+    }
+    try {
+        $searchBase = "OU=Users,$($baseOUGlobal)"
+        $filter = "(&(objectClass=user)(|"
+        $filter += "(cn=*$searchText*)"
+        $filter += "(givenName=*$searchText*)"
+        $filter += "(sn=*$searchText*)"
+        $filter += "(samAccountName=*$searchText*)"
+        $filter += "))"
+        $results = Get-ADUser -SearchBase $searchBase -LDAPFilter $filter -Properties * -ResultSetSize 1000
+        foreach ($user in $results) {
+            $lbUsers.Items.Add($user.SamAccountName)
+        }
+    } catch {
+        [System.Windows.Forms.MessageBox]::Show("Erreur lors de la recherche : $($_.Exception.Message)", "Erreur")
+    }
+    # Cacher détails
+    Set-UserDetailsVisibility $false
+    $txtPath.Text = ""
+})
+
+# Lors de la sélection utilisateur
+$null = $lbUsers.Add_SelectedIndexChanged({
+    if ($lbUsers.SelectedItem) {
+        $sam = $lbUsers.SelectedItem
+        try {
+            $user = Get-ADUser -Identity $sam -Properties *
+            foreach ($field in $fields) {
+                $value = $user.$($field.Key)
+                if ($null -eq $value) { $value = "-" }
+                $detailLabels[$field.Key].Text = "$value"
+            }
+            $dn = $user.DistinguishedName
+            $txtPath.Text = "LDAP://$dn"
+            Set-UserDetailsVisibility $true
+        } catch {
+            [System.Windows.Forms.MessageBox]::Show("Erreur : $($_.Exception.Message)", "Erreur")
+        }
+    }
+})
+
+# Double clic pour déselectionner
+$null = $lbUsers.Add_DoubleClick({
+    $lbUsers.ClearSelected()
+    Set-UserDetailsVisibility $false
+    $txtPath.Text = ""
+})
+
+# Favori
+$null = $btnFavorite.Add_Click({
+    if ($lbUsers.SelectedItem) {
+        $favName = $lbUsers.SelectedItem
+        $favName | ConvertTo-Json | Set-Content (Join-Path $env:APPDATA "UserFavorite.json")
+        [System.Windows.Forms.MessageBox]::Show("Favori sauvegardé : $favName", "Info")
+    }
+})
+
+# Charger le favori si existant
+if ($favoriteUser -and $favoriteUser -ne "") {
+    try {
+        $userFav = Get-ADUser -Identity $favoriteUser -Properties *
+        foreach ($field in $fields) {
+            $value = $userFav.$($field.Key)
+            if ($null -eq $value) { $value = "-" }
+            $detailLabels[$field.Key].Text = "$value"
+        }
+        $dn = $userFav.DistinguishedName
+        $txtPath.Text = "LDAP://$dn"
+        if ($lbUsers.Items.Contains($favoriteUser)) {
+            $null = $lbUsers.SetSelected($lbUsers.Items.IndexOf($favoriteUser), $true)
+        } else {
+            $lbUsers.Items.Insert(0, $favoriteUser)
+            $null = $lbUsers.SetSelected(0, $true)
+        }
+        Set-UserDetailsVisibility $true
+    } catch {
+        # ignore
+    }
+}
+
+# Réinitialiser MDP
+$null = $btnResetPwd.Add_Click({
+    if (-not $lbUsers.SelectedItem) {
+        [System.Windows.Forms.MessageBox]::Show("Sélectionnez un utilisateur d'abord.", "Info")
+        return
+    }
+    $confirm = [System.Windows.Forms.MessageBox]::Show("Voulez-vous vraiment réinitialiser le mot de passe ?", "Confirmation", [System.Windows.Forms.MessageBoxButtons]::YesNo)
+    if ($confirm -eq [System.Windows.Forms.DialogResult]::Yes) {
+        $sam = $lbUsers.SelectedItem
+        try {
+            $user = Get-ADUser -Identity $sam -Properties EmployeeID, Enabled
+            if (-not $user) {
+                [System.Windows.Forms.MessageBox]::Show("Utilisateur introuvable.", "Erreur")
+                return
+            }
+            if (-not $user.EmployeeID) {
+                [System.Windows.Forms.MessageBox]::Show("Matricule introuvable.", "Erreur")
+                return
+            }
+            $newPwd = "Foundever@$($user.EmployeeID)$(Get-RandomCode)"
+            if (-not $user.Enabled) { Set-ADUser -Identity $sam -Enabled $true }
+            Set-ADAccountPassword -Identity $sam -Reset -NewPassword (ConvertTo-SecureString $newPwd -AsPlainText -Force)
+            Set-ADUser -Identity $sam -ChangePasswordAtLogon $true
+            $msg = "Mot de passe réinitialisé pour $sam.`nNouveau mot de passe : $newPwd`nL'utilisateur devra changer son mot à sa prochaine connexion."
+            [System.Windows.Forms.Clipboard]::SetText($msg)
+            [System.Windows.Forms.MessageBox]::Show($msg, "Réinitialisation")
+            # Recharger infos
+            $user = Get-ADUser -Identity $sam -Properties *
+            foreach ($field in $fields) {
+                $value = $user.$($field.Key)
+                if ($null -eq $value) { $value = "-" }
+                $detailLabels[$field.Key].Text = "$value"
+            }
+            $dn = $user.DistinguishedName
+            $txtPath.Text = "LDAP://$dn"
+        } catch {
+            [System.Windows.Forms.MessageBox]::Show("Erreur lors de la réinitialisation : $($_.Exception.Message)", "Erreur")
+        }
+    }
+})
+
+# Désactiver le compte
+$null = $btnDisable.Add_Click({
+    if (-not $lbUsers.SelectedItem) { return }
+    $sam = $lbUsers.SelectedItem
+    try {
+        Disable-ADAccount -Identity $sam
+        [System.Windows.Forms.MessageBox]::Show("Compte désactivé : $sam", "Info")
+        $user = Get-ADUser -Identity $sam -Properties *
+        foreach ($field in $fields) {
+            $value = $user.$($field.Key)
+            if ($null -eq $value) { $value = "-" }
+            $detailLabels[$field.Key].Text = "$value"
+        }
+        $dn = $user.DistinguishedName
+        $txtPath.Text = "LDAP://$dn"
+    } catch {
+        [System.Windows.Forms.MessageBox]::Show("Erreur : $($_.Exception.Message)", "Erreur")
+    }
+})
+
+# Afficher le formulaire
+[void]$form.ShowDialog()
