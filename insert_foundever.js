@@ -33,7 +33,22 @@ const replacementStr = `    <!-- Stage Foundever: Gérer le patrimoine informati
         <div class="proof-cards-grid">
             <article class="proof-card-item">
                 <div class="proof-card-header">
-                    <span class="proof-tag" style="font-size:0.75em; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Interface principale de l'outil">Interface principale de l'outil</span>
+                    <span class="proof-tag" style="font-size:0.75em; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Cahier des charges">Cahier des charges</span>
+                    <h4 style="margin-top:4px;" title="Cahier des charges">Cahier des charges</h4>
+                </div>
+                <div class="proof-image-wrapper">
+                    <img src="assets/preuves_foundever/foundevercahierdescharges.docx" alt="Cahier des charges" class="proof-image" onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=800&auto=format&fit=crop';" />
+                </div>
+                
+                <div style="font-size: 0.85rem; padding: 10px; color: var(--text-muted); font-style: italic;">
+                    Documentation professionnelle rédigée pour définir les besoins, les fonctionnalités attendues et les contraintes techniques du projet.
+                </div>
+                <a href="assets/preuves_foundever/foundevercahierdescharges.docx" target="_blank" class="btn btn--sm proof-btn" style="margin-top:10px;">Voir le document</a>
+            </article>
+
+            <article class="proof-card-item">
+                <div class="proof-card-header">
+                    <span class="proof-tag" style="font-size:0.75em; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Annuaire Active Directory">Annuaire Active Directory</span>
                     <h4 style="margin-top:4px;" title="Interface d'interrogation de l'annuaire AD">Interface d'interrogation de l'annuaire AD</h4>
                 </div>
                 <div class="proof-image-wrapper">
@@ -43,7 +58,7 @@ const replacementStr = `    <!-- Stage Foundever: Gérer le patrimoine informati
             </article>
             <article class="proof-card-item">
                 <div class="proof-card-header">
-                    <span class="proof-tag" style="font-size:0.75em; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Script de récupération des données LDAP">Script de récupération des données LDAP</span>
+                    <span class="proof-tag" style="font-size:0.75em; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Scripting PowerShell">Scripting PowerShell</span>
                     <h4 style="margin-top:4px;" title="Import des modules et connexion">Import des modules et connexion</h4>
                 </div>
                 <div class="proof-image-wrapper">
@@ -53,7 +68,7 @@ const replacementStr = `    <!-- Stage Foundever: Gérer le patrimoine informati
             </article>
             <article class="proof-card-item">
                 <div class="proof-card-header">
-                    <span class="proof-tag" style="font-size:0.75em; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Déplacement d'objets OUs">Déplacement d'objets OUs</span>
+                    <span class="proof-tag" style="font-size:0.75em; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Gestion des Unités Organisationnelles">Gestion des Unités Organisationnelles</span>
                     <h4 style="margin-top:4px;" title="Modification de l'arborescence (Move-ADObject)">Modification de l'arborescence (Move-ADObject)</h4>
                 </div>
                 <div class="proof-image-wrapper">
@@ -63,7 +78,7 @@ const replacementStr = `    <!-- Stage Foundever: Gérer le patrimoine informati
             </article>
             <article class="proof-card-item">
                 <div class="proof-card-header">
-                    <span class="proof-tag" style="font-size:0.75em; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Inventaire des ressources matérielles">Inventaire des ressources matérielles</span>
+                    <span class="proof-tag" style="font-size:0.75em; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Inventaire Matériel">Inventaire Matériel</span>
                     <h4 style="margin-top:4px;" title="Module de recherche de PC (sans nº de série)">Module de recherche de PC (sans nº de série)</h4>
                 </div>
                 <div class="proof-image-wrapper">
@@ -80,7 +95,7 @@ const replacementStr = `    <!-- Stage Foundever: Gérer le patrimoine informati
         <div class="proof-cards-grid">
             <article class="proof-card-item">
                 <div class="proof-card-header">
-                    <span class="proof-tag" style="font-size:0.75em; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Traitement des pertes d'accès">Traitement des pertes d'accès</span>
+                    <span class="proof-tag" style="font-size:0.75em; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Traitement des requêtes courantes">Traitement des requêtes courantes</span>
                     <h4 style="margin-top:4px;" title="Automatisation de la réinitialisation de mots de passe">Automatisation de la réinitialisation de mots de passe</h4>
                 </div>
                 <div class="proof-image-wrapper">
@@ -90,7 +105,7 @@ const replacementStr = `    <!-- Stage Foundever: Gérer le patrimoine informati
             </article>
             <article class="proof-card-item">
                 <div class="proof-card-header">
-                    <span class="proof-tag" style="font-size:0.75em; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Offboarding Collaborateurs">Offboarding Collaborateurs</span>
+                    <span class="proof-tag" style="font-size:0.75em; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Gestion des départs">Gestion des départs</span>
                     <h4 style="margin-top:4px;" title="Fonction de désactivation sécurisée">Fonction de désactivation sécurisée</h4>
                 </div>
                 <div class="proof-image-wrapper">
@@ -107,7 +122,7 @@ const replacementStr = `    <!-- Stage Foundever: Gérer le patrimoine informati
         <div class="proof-cards-grid">
             <article class="proof-card-item">
                 <div class="proof-card-header">
-                    <span class="proof-tag" style="font-size:0.75em; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Cahier des charges & Corrections">Cahier des charges & Corrections</span>
+                    <span class="proof-tag" style="font-size:0.75em; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Remarques & Corrections">Remarques & Corrections</span>
                     <h4 style="margin-top:4px;" title="Feedback du tuteur sur les fonctionnalités">Feedback du tuteur sur les fonctionnalités</h4>
                 </div>
                 <div class="proof-image-wrapper">
@@ -117,7 +132,7 @@ const replacementStr = `    <!-- Stage Foundever: Gérer le patrimoine informati
             </article>
             <article class="proof-card-item">
                 <div class="proof-card-header">
-                    <span class="proof-tag" style="font-size:0.75em; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Correction de bugs d'interface">Correction de bugs d'interface</span>
+                    <span class="proof-tag" style="font-size:0.75em; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Recette et Débogage">Recette et Débogage</span>
                     <h4 style="margin-top:4px;" title="Problèmes d'affichage détectés en recette">Problèmes d'affichage détectés en recette</h4>
                 </div>
                 <div class="proof-image-wrapper">
@@ -144,7 +159,7 @@ const replacementStr = `    <!-- Stage Foundever: Gérer le patrimoine informati
             </article>
             <article class="proof-card-item">
                 <div class="proof-card-header">
-                    <span class="proof-tag" style="font-size:0.75em; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Création d'une IHM (Forms) pour PowerShell">Création d'une IHM (Forms) pour PowerShell</span>
+                    <span class="proof-tag" style="font-size:0.75em; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Conception du Service">Conception du Service</span>
                     <h4 style="margin-top:4px;" title="Code source de l'interface WinForms">Code source de l'interface WinForms</h4>
                 </div>
                 <div class="proof-image-wrapper">
@@ -154,7 +169,7 @@ const replacementStr = `    <!-- Stage Foundever: Gérer le patrimoine informati
             </article>
             <article class="proof-card-item">
                 <div class="proof-card-header">
-                    <span class="proof-tag" style="font-size:0.75em; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Confirmation et rassurance UI">Confirmation et rassurance UI</span>
+                    <span class="proof-tag" style="font-size:0.75em; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Sécurisation du Service">Sécurisation du Service</span>
                     <h4 style="margin-top:4px;" title="Pop-ups de confirmation des actions critiques">Pop-ups de confirmation des actions critiques</h4>
                 </div>
                 <div class="proof-image-wrapper">
