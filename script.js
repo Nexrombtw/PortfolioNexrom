@@ -53,57 +53,28 @@ initTheme();
 
 
 /* -----------------------------------------------------------
-   2. INSIGHTS DATA (Veille Tech: IA & Recherche)
-   Timeline: Août 2025 -> Février 2026
+   2. INSIGHTS DATA (Veille Tech: L'IA au Service du Développeur)
 ----------------------------------------------------------- */
 const insightsData = [
   {
-    date: "Août 2025",
-    tag: "Découverte IA",
-    title: "Premiers usages des LLM en développement",
-    desc: "Exploration initiale de ChatGPT pour la génération de boilerplate code et la compréhension rapide de nouvelles documentations.",
+    date: "Aujourd'hui",
+    tag: "Workflow & Productivité",
+    title: "L'IA comme véritable Copilote de développement",
+    desc: "Avant, on codait chaque ligne manuellement. Aujourd'hui, j'intègre des agents (LLMs) pour m'assister sur la création de structures de base (boilerplate), résoudre des erreurs de compilation ou optimiser mes algorithmes. Mon temps d'ingénierie se concentre désormais davantage sur l'architecture logicielle plutôt que sur la syntaxe pure.",
     link: "#"
   },
   {
-    date: "Sept. 2025",
-    tag: "Productivité",
-    title: "L'art du Prompt Engineering",
-    desc: "Apprentissage des techniques de prompting (Context, Instruction, Output) pour obtenir des résultats de code plus précis et maintenables.",
-    link: "#"
-  },
-  {
-    date: "Oct. 2025",
-    tag: "Qualité Code",
-    title: "Refactoring assisté par l'IA",
-    desc: "Utilisation de l'IA pour identifier les code smells et proposer des refactorisations (clean code) dans mes projets scolaires.",
-    link: "#"
-  },
-  {
-    date: "Nov. 2025",
-    tag: "Documentation",
-    title: "Génération de documentation technique",
-    desc: "Test d'outils pour automatiser la rédaction de JSDoc et de README complets à partir du code source existant.",
-    link: "#"
-  },
-  {
-    date: "Déc. 2025",
-    tag: "Recherche & Veille",
-    title: "Découverte de Perplexity pour le dev",
-    desc: "Basculement vers Perplexity pour une recherche technique sourcée et synthétisée, remplaçant partiellement les recherches Google classiques.",
+    date: "Recherche",
+    tag: "Moteur IA",
+    title: "Perplexity AI : Une recherche sourcée",
+    desc: "Plutôt que des requêtes classiques sur les moteurs de recherche, j’utilise Perplexity comme outil de pointe pour chercher des solutions techniques documentées. L’avantage majeur est d'obtenir une synthèse immédiate tout en ayant accès directement à la documentation officielle citée en source, réduisant mon temps de résolution de problèmes.",
     link: "https://www.perplexity.ai"
   },
   {
-    date: "Janv. 2026",
-    tag: "Workflow Pro",
-    title: "L’IA intégrée au quotidien (Stage)",
-    desc: "Intégration fluide dans mon workflow de stage : debugging complexe, explications d'erreurs et suggestions d'optimisation en temps réel.",
-    link: "#"
-  },
-  {
-    date: "Fév. 2026",
-    tag: "Éthique & Limites",
-    title: "Flexibilité, Hallucinations et RGPD",
-    desc: "Prise de recul critique : vérification systématique du code généré (sécurité) et vigilance stricte sur la confidentialité des données injectées.",
+    date: "Code & IDE",
+    tag: "Assistance Native",
+    title: "L'intégration d'Assistants (IntelliJ, AntiGravity...)",
+    desc: "L'intégration native d'outils d'intelligence artificielle au sein même de l'IDE (comme les plugins intelligents sur IntelliJ ou des agents de codage) transforme l'expérience de développement. Ces outils procurent des retours contextuels, de l'auto-complétion intelligente, et identifient instantanément les 'code smells' pour garantir un code propre.",
     link: "#"
   }
 ];

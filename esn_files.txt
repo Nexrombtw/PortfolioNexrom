@@ -1,0 +1,31 @@
+
+Dir: ancien_design_esn_lille
+ - ezaeazdqsdq_s.jpg
+ - image.jpg
+ - izzzzzzzzzmage.jpg
+ - sans_titre.png
+ - z1.jpg
+ - zeazeaze.jpg
+ - zzzzzzzzz.jpg
+
+Dir: contact
+ - capture_d_ecran_2026_02_04_165548.png
+ - capture_d_ecran_2026_02_04_165654.png
+
+Dir: esn_card
+
+Dir: esn_lille
+
+Dir: event
+
+Dir: footer
+ - footer.png
+
+Dir: navbar
+ - capture_d_ecran_2026_01_21_124050.png
+ - capture_d_ecran_2026_01_21_124801.png
+
+Dir: page_d_acceuil
+ - esn_page.png
+
+Dir: rejoindre_l_asso
