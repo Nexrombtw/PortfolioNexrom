@@ -750,13 +750,11 @@ tr.section-title td {
   cursor: pointer;
   position: relative;
   transition:
-    transform 0.25s var(--spring-soft),
     background-color 0.25s,
     box-shadow 0.25s;
 }
 
 .competences-bts td.has-proofs:hover {
-  transform: scale(1.18) translateZ(0);
   z-index: 10;
   background-color: var(--panel) !important;
   border-radius: 8px;
@@ -769,7 +767,7 @@ tr.section-title td {
 }
 
 .competences-bts td.has-proofs:hover .matrix-icon {
-  transform: scale(1.15);
+  transform: scale(1.25);
 }
 
 /* Styles pour les screens de preuves dans la modale (Ultra Premium) */
